@@ -73,7 +73,48 @@ function drawWallBricks(ctx: CanvasRenderingContext2D) {
 
 // ─── Platforms / floors ────────────────────────────────────────────────────────
 
-function drawPlatforms(ctx: CanvasRenderingContext2D, platforms: Platform[]) {
+// Width of the hole punched in a floor plank where a ladder passes through.
+const LADDER_GAP_W = 24;
+
+// Draws one stone-floor segment spanning [x, x + w] at the plank's y/h.
+function drawFloorSegment(ctx: CanvasRenderingContext2D, x: number, w: number, y: number, h: number) {
+  if (w <= 0) return;
+
+  const floorGrad = ctx.createLinearGradient(0, y, 0, y + h);
+  floorGrad.addColorStop(0, '#9a8460');
+  floorGrad.addColorStop(0.4, '#7a6440');
+  floorGrad.addColorStop(1, '#5a4420');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(x, y, w, h);
+
+  // Plank lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  for (let px = x + 64; px < x + w; px += 64) {
+    ctx.beginPath();
+    ctx.moveTo(px, y);
+    ctx.lineTo(px, y + h);
+    ctx.stroke();
+  }
+
+  // Highlight top edge
+  ctx.strokeStyle = 'rgba(255,220,140,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 1);
+  ctx.lineTo(x + w, y + 1);
+  ctx.stroke();
+
+  // Shadow bottom edge
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y + h - 1);
+  ctx.lineTo(x + w, y + h - 1);
+  ctx.stroke();
+}
+
+function drawPlatforms(ctx: CanvasRenderingContext2D, platforms: Platform[], ladders: Ladder[]) {
   for (const p of platforms) {
     if (p.isGround === false) {
       // side wall
@@ -86,39 +127,19 @@ function drawPlatforms(ctx: CanvasRenderingContext2D, platforms: Platform[]) {
       continue;
     }
 
-    // Stone floor plank
-    const floorGrad = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
-    floorGrad.addColorStop(0, '#9a8460');
-    floorGrad.addColorStop(0.4, '#7a6440');
-    floorGrad.addColorStop(1, '#5a4420');
-    ctx.fillStyle = floorGrad;
-    ctx.fillRect(p.x, p.y, p.w, p.h);
+    // Gaps where a ladder passes up through this plank.
+    const gaps = ladders
+      .filter(l => Math.abs(l.y - p.y) < p.h && l.x > p.x && l.x < p.x + p.w)
+      .map(l => [l.x - LADDER_GAP_W / 2, l.x + LADDER_GAP_W / 2] as const)
+      .sort((a, b) => a[0] - b[0]);
 
-    // Plank lines
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 1;
-    for (let px = p.x + 64; px < p.x + p.w; px += 64) {
-      ctx.beginPath();
-      ctx.moveTo(px, p.y);
-      ctx.lineTo(px, p.y + p.h);
-      ctx.stroke();
+    // Draw the plank as segments between the gaps.
+    let segStart = p.x;
+    for (const [gapStart, gapEnd] of gaps) {
+      drawFloorSegment(ctx, segStart, gapStart - segStart, p.y, p.h);
+      segStart = gapEnd;
     }
-
-    // Highlight top edge
-    ctx.strokeStyle = 'rgba(255,220,140,0.5)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y + 1);
-    ctx.lineTo(p.x + p.w, p.y + 1);
-    ctx.stroke();
-
-    // Shadow bottom edge
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y + p.h - 1);
-    ctx.lineTo(p.x + p.w, p.y + p.h - 1);
-    ctx.stroke();
+    drawFloorSegment(ctx, segStart, p.x + p.w - segStart, p.y, p.h);
   }
 }
 
@@ -1023,7 +1044,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, time: nu
   drawBackground(ctx);
 
   for (const ladder of state.ladders) drawLadder(ctx, ladder);
-  drawPlatforms(ctx, state.platforms);
+  drawPlatforms(ctx, state.platforms, state.ladders);
   for (const ladder of state.ladders) drawLadderTopMarker(ctx, ladder);
   for (const prop of state.props) drawProp(ctx, prop);
   const treasuresCollected = state.treasures.every(t => t.collected);
