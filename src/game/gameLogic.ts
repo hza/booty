@@ -90,8 +90,9 @@ function spawnParticles(
 // ─── Init / reset ─────────────────────────────────────────────────────────────
 
 export function initState(): GameState {
-  const doors = buildDoors();
+  const ladders = buildLadders();
   const portals = buildPortals();
+  const doors = buildDoors(portals);
   return {
     player: {
       x: 300, y: FLOOR_Y[0] - PLAYER_H,
@@ -106,7 +107,7 @@ export function initState(): GameState {
     portals,
     keys: buildKeys(doors, portals),
     platforms: buildPlatforms(),
-    ladders: buildLadders(),
+    ladders,
     treasures: buildTreasures(),
     collectedKeys: new Set(),
     openedDoors: new Set(),
@@ -131,8 +132,9 @@ export function resetLevel(state: GameState) {
     animFrame: 0, animTimer: 0,
     invincible: 120, dead: false,
   };
-  const doors = buildDoors();
+  state.ladders = buildLadders();
   const portals = buildPortals();
+  const doors = buildDoors(portals);
   state.pirates = buildPirates();
   state.doors = doors;
   state.portals = portals;
@@ -479,10 +481,6 @@ function updateTreasures(state: GameState) {
       state.score += 500;
       spawnParticles(state, t.x, t.y, '#ff4400', 20, 6);
       spawnParticles(state, t.x, t.y, '#ffd700', 20, 5);
-
-      if (state.treasures.every(tr => tr.collected)) {
-        state.levelComplete = true;
-      }
     }
   }
 }

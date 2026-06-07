@@ -12,24 +12,26 @@ const PORTAL_W = 36;
 const PORTAL_H = 56;
 
 // Ladder x positions that doors/keys/portals on each floor must avoid.
-// Includes both ladders that start on the floor and ladders that pass through it.
-const FLOOR_LADDER_XS: number[][] = [
-  [120, 380, 680],                         // floor 0: gap01 ladders start here
-  [120, 380, 680, 200, 510, 750],          // floor 1: gap01 pass through + gap12 start
-  [200, 510, 750,  80, 300, 600],          // floor 2: gap12 pass through + gap23 start
-  [ 80, 300, 600],                         // floor 3: gap23 ladders end here
-];
+// Populated by buildLadders() — must be called before buildDoors/buildKeys/buildPortals.
+let FLOOR_LADDER_XS: number[][] = [[], [], [], []];
 
 // Clearances are center-to-center; each accounts for the half-widths of both objects
 // plus one full TILE (32 px) of empty space between their edges.
 // Ladder half = 9 px (18 px wide), Door half = 8 px (DOOR_BAR_W), Key half = 10 px (KEY_W/2)
-const DOOR_LADDER_CLEAR  = 49;  // door center must be >= this far from any ladder x  (8+32+9)
-const KEY_LADDER_CLEAR   = 51;  // key center >= this far from any ladder x            (10+32+9)
-const PORTAL_LADDER_ZONE = 14;  // portal rect [x, x+PORTAL_W] must not overlap [lx-14, lx+14]
-const DOOR_KEY_CLEAR     = 50;  // key center >= this far from any door center on same floor (10+32+8)
+// Portal is expressed as left edge; portal right = x + PORTAL_W (36 px).
+const DOOR_LADDER_CLEAR  = 49;  // door center >= this far from ladder center (8+32+9)
+const KEY_LADDER_CLEAR   = 51;  // key center >= this far from ladder center  (10+32+9)
+const PORTAL_LADDER_ZONE = 41;  // portal [x, x+36] clears [lx-9, lx+9] by 32 px (portal_edge+32<=lx-9 → zone=41)
+const DOOR_KEY_CLEAR     = 50;  // key center >= this far from door center    (10+32+8)
 const DOOR_SEP           = 80;  // door centers on same floor >= this far apart
-const KEY_SEP            = 52;  // key centers >= this far apart                       (10+32+10)
+const KEY_SEP            = 52;  // key centers >= this far apart              (10+32+10)
 const PORTAL_SEP         = 80;  // portal left edges >= this far apart
+// Door-portal: door center must clear portal rect by 1 TILE
+const PORTAL_DOOR_L      = 40;  // door center < portal_x - 40 when door is left  (8+32=40)
+const PORTAL_DOOR_R      = 76;  // door center > portal_x + 76 when door is right (36+32+8=76)
+// Key-portal: key center must clear portal rect by 1 TILE
+const KEY_PORTAL_L       = 42;  // key center < portal_x - 42 when key is left   (10+32=42)
+const KEY_PORTAL_R       = 78;  // key center > portal_x + 78 when key is right  (36+32+10=78)
 
 function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -48,12 +50,13 @@ function doorFloor(door: Door): number {
   return CEILING_Y.indexOf(door.y);
 }
 
-function validDoorXs(fi: number, existing: number[]): number[] {
+function validDoorXs(fi: number, existing: number[], portalXs: number[]): number[] {
   const lxs = FLOOR_LADDER_XS[fi];
   const out: number[] = [];
   for (let x = 70; x <= CANVAS_W - 70; x += 4) {
     if (lxs.every(lx => Math.abs(x - lx) >= DOOR_LADDER_CLEAR) &&
-        existing.every(ex => Math.abs(x - ex) >= DOOR_SEP)) {
+        existing.every(ex => Math.abs(x - ex) >= DOOR_SEP) &&
+        portalXs.every(px => x <= px - PORTAL_DOOR_L || x >= px + PORTAL_DOOR_R)) {
       out.push(x);
     }
   }
@@ -85,7 +88,7 @@ function validKeyXs(
   for (let x = 50; x <= CANVAS_W - 50; x += 4) {
     if (lxs.every(lx => Math.abs(x - lx) >= KEY_LADDER_CLEAR) &&
         doorXsOnFloor.every(dx => Math.abs(x - dx) >= DOOR_KEY_CLEAR) &&
-        portalXsOnFloor.every(px => x < px - 12 || x > px + PORTAL_W + 12) &&
+        portalXsOnFloor.every(px => x < px - KEY_PORTAL_L || x > px + KEY_PORTAL_R) &&
         existingKeyXs.every(kx => Math.abs(x - kx) >= KEY_SEP)) {
       out.push(x);
     }
@@ -117,39 +120,76 @@ export function buildPlatforms(): Platform[] {
   return platforms;
 }
 
+function randomLadderXs(): number[] {
+  const MIN_X = 60;
+  const MAX_X = CANVAS_W - 60;
+  const MIN_SEP = 120;
+  const MAX_ATTEMPTS = 200;
+  // Split canvas into 3 zones and pick one x per zone for guaranteed spread
+  const zoneW = (MAX_X - MIN_X) / 3;
+  const xs: number[] = [];
+  for (let zone = 0; zone < 3; zone++) {
+    const lo = MIN_X + zone * zoneW;
+    const hi = lo + zoneW;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const x = Math.floor(lo + Math.random() * (hi - lo));
+      if (xs.every(ex => Math.abs(x - ex) >= MIN_SEP)) {
+        xs.push(x);
+        break;
+      }
+    }
+    // fallback: use zone midpoint
+    if (xs.length === zone) xs.push(Math.floor((lo + hi) / 2));
+  }
+  return xs;
+}
+
 export function buildLadders(): Ladder[] {
   const gap01 = FLOOR_Y[1] - FLOOR_Y[0];
   const gap12 = FLOOR_Y[2] - FLOOR_Y[1];
   const gap23 = FLOOR_Y[3] - FLOOR_Y[2];
+
+  const xs01 = randomLadderXs();
+  const xs12 = randomLadderXs();
+  const xs23 = randomLadderXs();
+
+  FLOOR_LADDER_XS = [
+    xs01,
+    [...xs01, ...xs12],
+    [...xs12, ...xs23],
+    xs23,
+  ];
+
   return [
-    { x: 120, y: FLOOR_Y[0], h: gap01 },
-    { x: 380, y: FLOOR_Y[0], h: gap01 },
-    { x: 680, y: FLOOR_Y[0], h: gap01 },
-
-    { x: 200, y: FLOOR_Y[1], h: gap12 },
-    { x: 510, y: FLOOR_Y[1], h: gap12 },
-    { x: 750, y: FLOOR_Y[1], h: gap12 },
-
-    { x:  80, y: FLOOR_Y[2], h: gap23 },
-    { x: 300, y: FLOOR_Y[2], h: gap23 },
-    { x: 600, y: FLOOR_Y[2], h: gap23 },
+    ...xs01.map(x => ({ x, y: FLOOR_Y[0], h: gap01 })),
+    ...xs12.map(x => ({ x, y: FLOOR_Y[1], h: gap12 })),
+    ...xs23.map(x => ({ x, y: FLOOR_Y[2], h: gap23 })),
   ];
 }
 
 // ─── Randomised level elements ────────────────────────────────────────────────
 
-export function buildDoors(): Door[] {
+export function buildDoors(portals: Portal[]): Door[] {
+  // Build per-floor portal x lookup for avoidance
+  const portalXsByFloor: number[][] = [[], [], [], []];
+  for (const p of portals) {
+    for (let fi = 0; fi < 4; fi++) {
+      if (p.y === FLOOR_Y[fi] - PORTAL_H) {
+        portalXsByFloor[fi].push(p.x);
+      }
+    }
+  }
+
   const doors: Door[] = [];
   let doorId = 0;
   let doorNum = 1;
 
   for (let fi = 0; fi < 4 && doors.length < 8; fi++) {
-    // Randomly place 1 or 2 doors on this floor
     const want = Math.random() < 0.5 ? 1 : 2;
     const takenXs: number[] = [];
 
     for (let i = 0; i < want && doors.length < 8; i++) {
-      const candidates = validDoorXs(fi, takenXs);
+      const candidates = validDoorXs(fi, takenXs, portalXsByFloor[fi]);
       if (candidates.length === 0) break;
       const x = pickRandom(candidates);
       takenXs.push(x);
@@ -264,7 +304,7 @@ const WALL_RIGHT = CANVAS_W - 16;    // left edge of right wall
 
 export function buildPirates(): Pirate[] {
   return [
-    { id: 0, x: 320, y: FLOOR_Y[0] - 32, vx: -TILE * 0.045, facingRight: false, floorIndex: 0, animFrame: 0, animTimer: 0,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
+    { id: 0, x: 100, y: FLOOR_Y[0] - 32, vx: -TILE * 0.045, facingRight: false, floorIndex: 0, animFrame: 0, animTimer: 0,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
     { id: 1, x: 700, y: FLOOR_Y[0] - 32, vx:  TILE * 0.045, facingRight: true,  floorIndex: 0, animFrame: 2, animTimer: 10, patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
     { id: 2, x: 400, y: FLOOR_Y[1] - 32, vx: -TILE * 0.045, facingRight: false, floorIndex: 1, animFrame: 1, animTimer: 5,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
     { id: 3, x: 560, y: FLOOR_Y[2] - 32, vx:  TILE * 0.045, facingRight: true,  floorIndex: 2, animFrame: 0, animTimer: 0,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },

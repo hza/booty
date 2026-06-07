@@ -302,7 +302,7 @@ function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: number)
 
 function drawKey(ctx: CanvasRenderingContext2D, key: Key, time: number) {
   if (key.collected) return;
-  const bob = Math.sin((time * 0.05 + key.bobTimer) * 0.5) * 3;
+  const bob = Math.sin((time * 0.05 + key.bobTimer) * 0.25) * 3;
   const kx = key.x;
   const ky = key.y + bob;
 
@@ -359,7 +359,7 @@ function drawKey(ctx: CanvasRenderingContext2D, key: Key, time: number) {
 
 function drawTreasure(ctx: CanvasRenderingContext2D, t: Treasure, time: number) {
   if (t.collected) return;
-  const bob = Math.sin((time * 0.04 + t.bobTimer) * 0.7) * 3;
+  const bob = Math.sin((time * 0.04 + t.bobTimer) * 0.35) * 3;
   const tx = t.x;
   const ty = t.y + bob;
 
