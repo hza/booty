@@ -1,4 +1,4 @@
-import type { Platform, Ladder, Key, Door, Portal, Pirate, Treasure } from './types';
+import type { Platform, Ladder, Key, Door, Portal, Pirate, Treasure, Prop, PropKind } from './types';
 import { FLOOR_Y, FLOOR_H, CANVAS_W, TILE } from './constants';
 
 // Ceiling above each floor's barrier. Lower floors use the floor above (+ its
@@ -319,6 +319,70 @@ export function buildPirates(): Pirate[] {
     { id: 4, x: 180, y: FLOOR_Y[3] - 32, vx: -TILE * 0.045, facingRight: false, floorIndex: 3, animFrame: 2, animTimer: 15, patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
     { id: 5, x: 580, y: FLOOR_Y[3] - 32, vx:  TILE * 0.045, facingRight: true,  floorIndex: 3, animFrame: 1, animTimer: 8,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
   ];
+}
+
+// ─── Static decoration (barrels, crates, sacks…) ─────────────────────────────
+
+const PROP_KINDS: PropKind[] = ['barrel', 'crate'];
+const PROP_HALF = 16;        // half-width used for spacing
+const PROP_LADDER_CLEAR = 32; // prop center this far from ladder center (15+9+~8)
+const PROP_DOOR_CLEAR   = 30; // prop center this far from door center
+const PROP_SEP          = 40; // adjacent props this far apart (allows light grouping)
+
+// Place a handful of purely decorative props on each floor. They never collide
+// with the player; we only keep them clear of ladders, doors and portals so the
+// interactive elements stay readable.
+export function buildProps(doors: Door[], portals: Portal[]): Prop[] {
+  const doorXsByFloor: number[][] = [[], [], [], []];
+  for (const d of doors) {
+    const fi = doorFloor(d);
+    if (fi >= 0) doorXsByFloor[fi].push(d.x);
+  }
+  const portalRangesByFloor: Array<Array<[number, number]>> = [[], [], [], []];
+  for (const p of portals) {
+    for (let fi = 0; fi < 4; fi++) {
+      if (p.y === FLOOR_Y[fi] - PORTAL_H) {
+        portalRangesByFloor[fi].push([p.x - PROP_HALF, p.x + PORTAL_W + PROP_HALF]);
+      }
+    }
+  }
+
+  const props: Prop[] = [];
+  let id = 0;
+
+  for (let fi = 0; fi < 4; fi++) {
+    const lxs = FLOOR_LADDER_XS[fi];
+    const dxs = doorXsByFloor[fi];
+    const pRanges = portalRangesByFloor[fi];
+
+    const candidates: number[] = [];
+    for (let x = 60; x <= CANVAS_W - 60; x += 4) {
+      if (lxs.every(lx => Math.abs(x - lx) >= PROP_LADDER_CLEAR) &&
+          dxs.every(dx => Math.abs(x - dx) >= PROP_DOOR_CLEAR) &&
+          pRanges.every(([a, b]) => x < a || x > b)) {
+        candidates.push(x);
+      }
+    }
+
+    const want = 2 + Math.floor(Math.random() * 3); // 2–4 props per floor
+    const takenXs: number[] = [];
+    const pool = shuffle(candidates);
+    for (const x of pool) {
+      if (takenXs.length >= want) break;
+      if (takenXs.every(tx => Math.abs(x - tx) >= PROP_SEP)) {
+        takenXs.push(x);
+        props.push({
+          id: id++,
+          kind: pickRandom(PROP_KINDS),
+          x,
+          y: FLOOR_Y[fi],
+          flip: Math.random() < 0.5,
+        });
+      }
+    }
+  }
+
+  return props;
 }
 
 export function buildTreasures(): Treasure[] {

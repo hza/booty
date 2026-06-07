@@ -7,7 +7,7 @@ import {
   FLOOR_Y, FLOOR_H, CANVAS_W, CANVAS_H
 } from './constants';
 import {
-  buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals, buildPirates, buildTreasures
+  buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals, buildPirates, buildTreasures, buildProps
 } from './level';
 
 const PORTAL_W = 36;
@@ -107,6 +107,7 @@ export function initState(): GameState {
     platforms: buildPlatforms(),
     ladders,
     treasures: buildTreasures(),
+    props: buildProps(doors, portals),
     collectedKeys: new Set(),
     openedDoors: new Set(),
     score: 0,
@@ -138,6 +139,7 @@ export function resetLevel(state: GameState) {
   state.portals = portals;
   state.keys = buildKeys(doors, portals);
   state.treasures = buildTreasures();
+  state.props = buildProps(doors, portals);
   state.collectedKeys = new Set();
   state.openedDoors = new Set();
   state.particles = [];

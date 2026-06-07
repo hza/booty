@@ -86,6 +86,17 @@ export interface Treasure {
   bobTimer: number;
 }
 
+// Static, non-interactive decoration sitting on a floor (barrels, crates, sacks…)
+export type PropKind = 'barrel' | 'crate' | 'sack' | 'bottles';
+
+export interface Prop {
+  id: number;
+  kind: PropKind;
+  x: number;   // centre X
+  y: number;   // baseline Y (sits on floor surface)
+  flip: boolean; // mirror horizontally for variety
+}
+
 export interface GameState {
   player: Player;
   pirates: Pirate[];
@@ -95,6 +106,7 @@ export interface GameState {
   platforms: Platform[];
   ladders: Ladder[];
   treasures: Treasure[];
+  props: Prop[];
   collectedKeys: Set<number>;
   openedDoors: Set<number>;
   score: number;

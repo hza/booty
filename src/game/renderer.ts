@@ -1,4 +1,4 @@
-import type { GameState, Player, Pirate, Key, Door, Portal, Platform, Ladder, Particle, Treasure } from './types';
+import type { GameState, Player, Pirate, Key, Door, Portal, Platform, Ladder, Particle, Treasure, Prop } from './types';
 import {
   CANVAS_W, CANVAS_H,
   PLAYER_W, PLAYER_H, PIRATE_W, PIRATE_H, FLOOR_H,
@@ -459,6 +459,124 @@ function drawTreasure(ctx: CanvasRenderingContext2D, t: Treasure, time: number) 
   ctx.restore();
 }
 
+// ─── Static props (barrels, crates, sacks, bottles) ─────────────────────────────
+
+function drawBarrel(ctx: CanvasRenderingContext2D) {
+  const w = 26, h = 32;
+  // Body with vertical staves shading
+  const grad = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+  grad.addColorStop(0, '#6b4a25');
+  grad.addColorStop(0.5, '#a06a32');
+  grad.addColorStop(1, '#6b4a25');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, -h);
+  ctx.quadraticCurveTo(-w / 2 - 4, -h / 2, -w / 2, 0);
+  ctx.lineTo(w / 2, 0);
+  ctx.quadraticCurveTo(w / 2 + 4, -h / 2, w / 2, -h);
+  ctx.closePath();
+  ctx.fill();
+  // Metal hoops
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(-w / 2 - 2, -h + 3, w + 4, 3);
+  ctx.fillRect(-w / 2 - 4, -h / 2 - 1, w + 8, 3);
+  ctx.fillRect(-w / 2 - 2, -4, w + 4, 3);
+  // Staves
+  ctx.strokeStyle = 'rgba(40,25,10,0.5)';
+  ctx.lineWidth = 1;
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * 7, -h + 4);
+    ctx.lineTo(i * 7, -2);
+    ctx.stroke();
+  }
+}
+
+function drawCrate(ctx: CanvasRenderingContext2D) {
+  const s = 30;
+  const grad = ctx.createLinearGradient(0, -s, 0, 0);
+  grad.addColorStop(0, '#b9893f');
+  grad.addColorStop(1, '#8a5f28');
+  ctx.fillStyle = grad;
+  ctx.fillRect(-s / 2, -s, s, s);
+  // Plank borders
+  ctx.strokeStyle = '#5c3d18';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-s / 2, -s, s, s);
+  // Diagonal braces
+  ctx.beginPath();
+  ctx.moveTo(-s / 2, -s);
+  ctx.lineTo(s / 2, 0);
+  ctx.moveTo(s / 2, -s);
+  ctx.lineTo(-s / 2, 0);
+  ctx.stroke();
+  // Frame edges
+  ctx.lineWidth = 3;
+  ctx.strokeRect(-s / 2 + 1, -s + 1, s - 2, s - 2);
+}
+
+function drawSack(ctx: CanvasRenderingContext2D) {
+  const w = 24, h = 28;
+  const grad = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+  grad.addColorStop(0, '#7a6a4a');
+  grad.addColorStop(0.5, '#a8966c');
+  grad.addColorStop(1, '#7a6a4a');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, 0);
+  ctx.quadraticCurveTo(-w / 2 - 2, -h * 0.7, -5, -h + 4);
+  ctx.lineTo(-3, -h);
+  ctx.lineTo(3, -h);
+  ctx.lineTo(5, -h + 4);
+  ctx.quadraticCurveTo(w / 2 + 2, -h * 0.7, w / 2, 0);
+  ctx.closePath();
+  ctx.fill();
+  // Tied neck
+  ctx.strokeStyle = '#5a4a2a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-5, -h + 4);
+  ctx.lineTo(5, -h + 4);
+  ctx.stroke();
+}
+
+function drawBottles(ctx: CanvasRenderingContext2D) {
+  // A small cluster of rum bottles
+  const positions = [-7, 0, 7];
+  positions.forEach((bx, i) => {
+    const h = 22 - (i === 1 ? 0 : 3);
+    ctx.fillStyle = i % 2 === 0 ? '#1f5e3a' : '#2a4d6e';
+    // body
+    ctx.fillRect(bx - 3, -h, 6, h);
+    // neck
+    ctx.fillRect(bx - 1.5, -h - 5, 3, 5);
+    // highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(bx - 2, -h + 2, 1.5, h - 4);
+  });
+}
+
+function drawProp(ctx: CanvasRenderingContext2D, prop: Prop) {
+  ctx.save();
+  ctx.translate(prop.x, prop.y);
+  if (prop.flip) ctx.scale(-1, 1);
+
+  // Soft ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 16, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  switch (prop.kind) {
+    case 'barrel':  drawBarrel(ctx); break;
+    case 'crate':   drawCrate(ctx); break;
+    case 'sack':    drawSack(ctx); break;
+    case 'bottles': drawBottles(ctx); break;
+  }
+
+  ctx.restore();
+}
+
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 function drawPlayer(ctx: CanvasRenderingContext2D, player: Player, time: number) {
@@ -907,6 +1025,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, time: nu
   for (const ladder of state.ladders) drawLadder(ctx, ladder);
   drawPlatforms(ctx, state.platforms);
   for (const ladder of state.ladders) drawLadderTopMarker(ctx, ladder);
+  for (const prop of state.props) drawProp(ctx, prop);
   for (const portal of state.portals) drawPortal(ctx, portal, time);
   for (const door of state.doors) drawDoor(ctx, door);
   for (const key of state.keys) drawKey(ctx, key, time);
