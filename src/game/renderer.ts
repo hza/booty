@@ -521,9 +521,15 @@ function drawPlayer(ctx: CanvasRenderingContext2D, player: Player, time: number)
   // Eyes
   ctx.fillStyle = '#1a0a00';
   ctx.beginPath();
+  ctx.ellipse(-3, -hh - 4, 2, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
   ctx.ellipse(3, -hh - 4, 2, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(-2.5, -hh - 5, 0.8, 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.beginPath();
   ctx.ellipse(3.5, -hh - 5, 0.8, 0.8, 0, 0, Math.PI * 2);
   ctx.fill();
