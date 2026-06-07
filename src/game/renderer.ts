@@ -679,17 +679,21 @@ function drawPirate(ctx: CanvasRenderingContext2D, pirate: Pirate, _time: number
   ctx.arc(0, -hh - 17, 2, 0, Math.PI * 2);
   ctx.fill();
 
-  // Eyes (angry)
-  ctx.fillStyle = '#cc0000';
-  ctx.shadowColor = '#ff0000';
-  ctx.shadowBlur = 4;
+  // Eyes
+  ctx.fillStyle = '#1a0a00';
   ctx.beginPath();
-  ctx.ellipse(-3, -hh - 5, 2, 2.5, -0.3, 0, Math.PI * 2);
+  ctx.ellipse(-3, -hh - 4, 2, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(3, -hh - 5, 2, 2.5, 0.3, 0, Math.PI * 2);
+  ctx.ellipse(3, -hh - 4, 2, 2.5, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(-2.5, -hh - 5, 0.8, 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(3.5, -hh - 5, 0.8, 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   // Scar
   ctx.strokeStyle = '#8B4513';
