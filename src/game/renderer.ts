@@ -211,6 +211,24 @@ function drawDoor(ctx: CanvasRenderingContext2D, door: Door) {
   ctx.moveTo(lx, bot); ctx.lineTo(rx + bw, bot);
   ctx.stroke();
 
+  // Handles near the bottom — small horizontal knobs protruding outward from each bar
+  const hy = bot - PLAYER_H / 2 - 20; // handle vertical center, half a player height up from bottom, raised 20px
+  const handleLen = 6;             // how far the handle sticks out
+  const handleH = 4;               // handle thickness
+  ctx.fillStyle = color;
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.lineWidth = 1;
+  // Left bar handle (points left)
+  ctx.fillRect(lx - handleLen, hy - handleH / 2, handleLen, handleH);
+  ctx.strokeRect(lx - handleLen, hy - handleH / 2, handleLen, handleH);
+  // Right bar handle (points right)
+  ctx.fillRect(rx + bw, hy - handleH / 2, handleLen, handleH);
+  ctx.strokeRect(rx + bw, hy - handleH / 2, handleLen, handleH);
+  // Knob tips (highlight)
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fillRect(lx - handleLen, hy - handleH / 2, 1, handleH);
+  ctx.fillRect(rx + bw + handleLen - 1, hy - handleH / 2, 1, handleH);
+
   // Number badge
   const labelY = Math.max(top + 16, 16);
   const numStr = String(door.number);
