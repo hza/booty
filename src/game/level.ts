@@ -385,9 +385,144 @@ export function buildProps(doors: Door[], portals: Portal[]): Prop[] {
   return props;
 }
 
-export function buildTreasures(): Treasure[] {
-  return [
-    { id: 0, x: 400, y: FLOOR_Y[2] - 24, collected: false, bobTimer: 0 },
-    { id: 1, x: 650, y: FLOOR_Y[3] - 24, collected: false, bobTimer: 12 },
-  ];
+export function buildTreasures(doors: Door[]): Treasure[] {
+  const doorXsByFloor: number[][] = [[], [], [], []];
+  for (const d of doors) {
+    const fi = doorFloor(d);
+    if (fi >= 0) doorXsByFloor[fi].push(d.x);
+  }
+
+  const TREASURE_LADDER_CLEAR = 51;
+  const TREASURE_DOOR_CLEAR = 60;
+  const TREASURE_SEP = 80;
+
+  const treasures: Treasure[] = [];
+  const usedFloors = shuffle([0, 1, 2, 3]).slice(0, 2);
+  const takenXs: number[] = [];
+
+  for (let i = 0; i < 2; i++) {
+    const fi = usedFloors[i];
+    const lxs = FLOOR_LADDER_XS[fi];
+    const dxs = doorXsByFloor[fi];
+
+    const candidates = [];
+    for (let x = 60; x <= CANVAS_W - 60; x += 4) {
+      if (lxs.every(lx => Math.abs(x - lx) >= TREASURE_LADDER_CLEAR) &&
+          dxs.every(dx => Math.abs(x - dx) >= TREASURE_DOOR_CLEAR) &&
+          takenXs.every(tx => Math.abs(x - tx) >= TREASURE_SEP)) {
+        candidates.push(x);
+      }
+    }
+
+    let x: number;
+    if (candidates.length > 0) {
+      x = pickRandom(candidates);
+    } else {
+      // fallback: just avoid the walls
+      x = 200 + i * 300;
+    }
+    takenXs.push(x);
+    treasures.push({ id: i, x, y: FLOOR_Y[fi] - 24, collected: false, bobTimer: i * 12 });
+  }
+
+  return treasures;
+}
+
+// ─── Solvability check ────────────────────────────────────────────────────────
+
+const DOOR_HALF_W = 4; // half of DOOR_BAR_W for segment splitting
+const WALL_L = 16;
+const WALL_R = CANVAS_W - 16;
+
+function floorSegments(fi: number, openDoorIds: Set<number>, doors: Door[]): Array<[number, number]> {
+  const xs = doors
+    .filter(d => doorFloor(d) === fi && !openDoorIds.has(d.id))
+    .map(d => d.x)
+    .sort((a, b) => a - b);
+  const out: Array<[number, number]> = [];
+  let left = WALL_L;
+  for (const x of xs) { out.push([left, x - DOOR_HALF_W]); left = x + DOOR_HALF_W; }
+  out.push([left, WALL_R]);
+  return out;
+}
+
+function sameSegment(fi: number, a: number, b: number, openDoorIds: Set<number>, doors: Door[]): boolean {
+  return floorSegments(fi, openDoorIds, doors).some(([l, r]) => a >= l && a <= r && b >= l && b <= r);
+}
+
+export function checkSolvable(
+  doors: Door[],
+  keys: Key[],
+  ladders: Ladder[],
+  treasures: Treasure[],
+): boolean {
+  function keyFloorIndex(k: Key): number {
+    for (let fi = 0; fi < 4; fi++) if (Math.abs(k.y + 26 - FLOOR_Y[fi]) < 2) return fi;
+    return -1;
+  }
+  function treasureFloorIndex(t: Treasure): number {
+    for (let fi = 0; fi < 4; fi++) if (Math.abs(t.y + 24 - FLOOR_Y[fi]) < 2) return fi;
+    return -1;
+  }
+  function ladderSpan(l: Ladder): [number, number] {
+    for (let fi = 0; fi < 3; fi++) if (l.y === FLOOR_Y[fi]) return [fi, fi + 1];
+    return [-1, -1];
+  }
+
+  const openDoorIds = new Set<number>();
+  const haveKeys = new Set<number>();
+  // Store known-reachable waypoint x per floor (ladder x's + player start)
+  const waypoints: Map<number, Set<number>> = new Map();
+  for (let fi = 0; fi < 4; fi++) waypoints.set(fi, new Set());
+
+  function isReachable(fi: number, x: number): boolean {
+    for (const rx of waypoints.get(fi)!) {
+      if (sameSegment(fi, rx, x, openDoorIds, doors)) return true;
+    }
+    return false;
+  }
+
+  function addWaypoint(fi: number, x: number): boolean {
+    if (isReachable(fi, x)) return false;
+    waypoints.get(fi)!.add(x);
+    return true;
+  }
+
+  addWaypoint(0, 300); // player start
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+
+    for (const ladder of ladders) {
+      const [f1, f2] = ladderSpan(ladder);
+      if (f1 < 0) continue;
+      if (isReachable(f1, ladder.x) && addWaypoint(f2, ladder.x)) changed = true;
+      if (isReachable(f2, ladder.x) && addWaypoint(f1, ladder.x)) changed = true;
+    }
+
+    for (const key of keys) {
+      if (haveKeys.has(key.number)) continue;
+      const fi = keyFloorIndex(key);
+      if (fi >= 0 && isReachable(fi, key.x)) {
+        haveKeys.add(key.number);
+        changed = true;
+      }
+    }
+
+    for (const door of doors) {
+      if (openDoorIds.has(door.id)) continue;
+      if (!haveKeys.has(door.number)) continue;
+      const fi = doorFloor(door);
+      if (isReachable(fi, door.x - 10) || isReachable(fi, door.x + 10)) {
+        openDoorIds.add(door.id);
+        changed = true;
+      }
+    }
+  }
+
+  return treasures.every(t => {
+    const fi = treasureFloorIndex(t);
+    return fi >= 0 && isReachable(fi, t.x);
+  });
 }

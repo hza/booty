@@ -7,7 +7,7 @@ import {
   FLOOR_Y, FLOOR_H, CANVAS_W, CANVAS_H
 } from './constants';
 import {
-  buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals, buildPirates, buildTreasures, buildProps
+  buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals, buildPirates, buildTreasures, buildProps, checkSolvable
 } from './level';
 
 const PORTAL_W = 36;
@@ -87,10 +87,28 @@ function spawnParticles(
 
 // ─── Init / reset ─────────────────────────────────────────────────────────────
 
-export function initState(): GameState {
+function buildLevelElements() {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const ladders = buildLadders();
+    const portals = buildPortals();
+    const doors = buildDoors(portals);
+    const keys = buildKeys(doors, portals);
+    const treasures = buildTreasures(doors);
+    if (checkSolvable(doors, keys, ladders, treasures)) {
+      return { ladders, portals, doors, keys, treasures };
+    }
+  }
+  // Fallback: return last attempt even if not verified (extremely rare)
   const ladders = buildLadders();
   const portals = buildPortals();
   const doors = buildDoors(portals);
+  const keys = buildKeys(doors, portals);
+  const treasures = buildTreasures(doors);
+  return { ladders, portals, doors, keys, treasures };
+}
+
+export function initState(): GameState {
+  const { ladders, portals, doors, keys, treasures } = buildLevelElements();
   return {
     player: {
       x: 300, y: FLOOR_Y[0] - PLAYER_H,
@@ -103,10 +121,10 @@ export function initState(): GameState {
     pirates: buildPirates(),
     doors,
     portals,
-    keys: buildKeys(doors, portals),
+    keys,
     platforms: buildPlatforms(),
     ladders,
-    treasures: buildTreasures(),
+    treasures,
     props: buildProps(doors, portals),
     collectedKeys: new Set(),
     openedDoors: new Set(),
@@ -131,14 +149,13 @@ export function resetLevel(state: GameState) {
     animFrame: 0, animTimer: 0,
     invincible: 120, dead: false,
   };
-  state.ladders = buildLadders();
-  const portals = buildPortals();
-  const doors = buildDoors(portals);
+  const { ladders, portals, doors, keys, treasures } = buildLevelElements();
+  state.ladders = ladders;
   state.pirates = buildPirates();
   state.doors = doors;
   state.portals = portals;
-  state.keys = buildKeys(doors, portals);
-  state.treasures = buildTreasures();
+  state.keys = keys;
+  state.treasures = treasures;
   state.props = buildProps(doors, portals);
   state.collectedKeys = new Set();
   state.openedDoors = new Set();
