@@ -1,8 +1,11 @@
 import type { Platform, Ladder, Key, Door, Portal, Pirate, Treasure } from './types';
 import { FLOOR_Y, FLOOR_H, CANVAS_W, TILE } from './constants';
 
+// Ceiling above each floor's barrier. Lower floors use the floor above (+ its
+// thickness); the top floor has no floor above it, so mirror the inter-floor
+// gap so every barrier spans the same height.
 const CEILING_Y = [
-  0,
+  FLOOR_Y[0] - (FLOOR_Y[1] - FLOOR_Y[0] - FLOOR_H),
   FLOOR_Y[0] + FLOOR_H,
   FLOOR_Y[1] + FLOOR_H,
   FLOOR_Y[2] + FLOOR_H,

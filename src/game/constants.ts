@@ -14,7 +14,7 @@ export const PLAYER_SPEED = 3.2;
 export const LADDER_SPEED = 2.5;
 export const PIRATE_SPEED = 1.4;
 
-export const FLOOR_Y = [90, 210, 330, 450]; // top of each floor surface
+export const FLOOR_Y = [110, 220, 330, 440]; // top of each floor surface — evenly spaced so every floor has equal height
 export const FLOOR_H = 16;
 
 export const COLORS = {

@@ -21,6 +21,39 @@ function drawBackground(ctx: CanvasRenderingContext2D) {
   ctx.save();
   drawWallBricks(ctx);
   ctx.restore();
+
+  drawCeiling(ctx);
+}
+
+// Stone ceiling beam across the top of the play area. Mirrors the floor plank
+// styling but lit on its underside (the face the player sees from below).
+function drawCeiling(ctx: CanvasRenderingContext2D) {
+  const h = FLOOR_H;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, '#5a4420');
+  grad.addColorStop(0.6, '#7a6440');
+  grad.addColorStop(1, '#9a8460');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CANVAS_W, h);
+
+  // Plank seams
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  for (let px = 64; px < CANVAS_W; px += 64) {
+    ctx.beginPath();
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, h);
+    ctx.stroke();
+  }
+
+  // Highlight bottom (lit) edge
+  ctx.strokeStyle = 'rgba(255,220,140,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, h - 1);
+  ctx.lineTo(CANVAS_W, h - 1);
+  ctx.stroke();
 }
 
 function drawWallBricks(ctx: CanvasRenderingContext2D) {
