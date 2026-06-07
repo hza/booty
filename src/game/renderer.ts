@@ -496,7 +496,7 @@ function drawBarrel(ctx: CanvasRenderingContext2D) {
 }
 
 function drawCrate(ctx: CanvasRenderingContext2D) {
-  const s = 30;
+  const s = 40;
   const grad = ctx.createLinearGradient(0, -s, 0, 0);
   grad.addColorStop(0, '#b9893f');
   grad.addColorStop(1, '#8a5f28');
