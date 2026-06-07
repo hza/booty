@@ -446,13 +446,16 @@ function updatePortals(state: GameState, input: InputState) {
   const { player } = state;
   if (player.dead) return;
 
+  // Exit is only usable once every treasure on the level is collected.
+  const allTreasuresCollected = state.treasures.every(t => t.collected);
+
   for (const portal of state.portals) {
     const overlaps = rectsOverlap(
       player.x, player.y, PLAYER_W, PLAYER_H,
       portal.x, portal.y, PORTAL_W, PORTAL_H
     );
     // Require pressing Down to enter the portal (like walking through a door)
-    if (overlaps && input.down) {
+    if (overlaps && input.down && allTreasuresCollected) {
       state.levelComplete = true;
       state.levelTimer = 90; // ~1.5 seconds of celebration before advancing
       spawnParticles(state, portal.x + PORTAL_W / 2, portal.y + PORTAL_H / 2, '#00ff44', 24, 6);
