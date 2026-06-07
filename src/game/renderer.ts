@@ -232,9 +232,11 @@ function drawDoor(ctx: CanvasRenderingContext2D, door: Door) {
 // ─── Portal (large green door — exit to next level) ───────────────────────────
 
 function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: number) {
-  const { x, y } = portal;
-  const w = PORTAL_W;
-  const h = PORTAL_H;
+  const w = PORTAL_W * 1.25;
+  const h = PORTAL_H * 1.25;
+  // Grow in place: keep the base on the ground and center over the footprint.
+  const x = portal.x - (w - PORTAL_W) / 2;
+  const y = portal.y - (h - PORTAL_H);
   const pulse = Math.sin(time * 0.06) * 0.15 + 0.85;
 
   ctx.save();
