@@ -199,24 +199,6 @@ function drawLadder(ctx: CanvasRenderingContext2D, ladder: Ladder) {
   }
 }
 
-// Draws a down-arrow on the floor surface to hint "you can descend here"
-function drawLadderTopMarker(ctx: CanvasRenderingContext2D, ladder: Ladder) {
-  ctx.save();
-  ctx.fillStyle = '#ffd700';
-  ctx.shadowColor = '#ffd700';
-  ctx.shadowBlur = 6;
-  ctx.beginPath();
-  const ax = ladder.x;
-  const ay = ladder.y + FLOOR_H / 2; // centred vertically in the floor plank
-  ctx.moveTo(ax - 6, ay - 5);
-  ctx.lineTo(ax + 6, ay - 5);
-  ctx.lineTo(ax,     ay + 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.restore();
-}
-
 // ─── Door (thin vertical barrier with number) ─────────────────────────────────
 
 const DOOR_COLORS: Record<number, string> = {
@@ -1045,7 +1027,6 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, time: nu
 
   for (const ladder of state.ladders) drawLadder(ctx, ladder);
   drawPlatforms(ctx, state.platforms, state.ladders);
-  for (const ladder of state.ladders) drawLadderTopMarker(ctx, ladder);
   for (const prop of state.props) drawProp(ctx, prop);
   const treasuresCollected = state.treasures.every(t => t.collected);
   for (const portal of state.portals) drawPortal(ctx, portal, time, treasuresCollected);
