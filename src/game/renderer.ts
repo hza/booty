@@ -660,7 +660,7 @@ function drawPirate(ctx: CanvasRenderingContext2D, pirate: Pirate, _time: number
   ctx.fillStyle = '#aa1800';
   ctx.save();
   ctx.translate(hw - 2, -hh + 12);
-  ctx.rotate(0.4 + walkOffset * 0.05);
+  ctx.rotate(-2.1 + walkOffset * 0.05);
   ctx.beginPath();
   ctx.roundRect(-3, 0, 7, 13, 2);
   ctx.fill();
