@@ -282,7 +282,7 @@ function drawDoor(ctx: CanvasRenderingContext2D, door: Door) {
 
 // ─── Portal (large green door — exit to next level) ───────────────────────────
 
-function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: number) {
+function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: number, active: boolean) {
   const w = PORTAL_W * 1.25;
   const h = PORTAL_H * 1.25;
   // Grow in place: keep the base on the ground and center over the footprint.
@@ -334,7 +334,7 @@ function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: number)
   ctx.shadowBlur = 0;
 
   // "EXIT" label at the top
-  ctx.fillStyle = `rgba(180,255,180,${pulse})`;
+  ctx.fillStyle = active ? `rgba(180,255,180,${pulse})` : `rgba(140,140,140,${pulse})`;
   ctx.font = 'bold 8px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
@@ -1026,7 +1026,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, time: nu
   drawPlatforms(ctx, state.platforms);
   for (const ladder of state.ladders) drawLadderTopMarker(ctx, ladder);
   for (const prop of state.props) drawProp(ctx, prop);
-  for (const portal of state.portals) drawPortal(ctx, portal, time);
+  const treasuresCollected = state.treasures.every(t => t.collected);
+  for (const portal of state.portals) drawPortal(ctx, portal, time, treasuresCollected);
   for (const door of state.doors) drawDoor(ctx, door);
   for (const key of state.keys) drawKey(ctx, key, time);
   for (const treasure of state.treasures) drawTreasure(ctx, treasure, time);
