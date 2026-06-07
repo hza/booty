@@ -120,28 +120,31 @@ export function buildPlatforms(): Platform[] {
   return platforms;
 }
 
-function randomLadderXs(): number[] {
-  const MIN_X = 60;
-  const MAX_X = CANVAS_W - 60;
-  const MIN_SEP = 120;
-  const MAX_ATTEMPTS = 200;
-  // Split canvas into 3 zones and pick one x per zone for guaranteed spread
-  const zoneW = (MAX_X - MIN_X) / 3;
-  const xs: number[] = [];
-  for (let zone = 0; zone < 3; zone++) {
-    const lo = MIN_X + zone * zoneW;
-    const hi = lo + zoneW;
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const x = Math.floor(lo + Math.random() * (hi - lo));
-      if (xs.every(ex => Math.abs(x - ex) >= MIN_SEP)) {
-        xs.push(x);
-        break;
-      }
-    }
-    // fallback: use zone midpoint
-    if (xs.length === zone) xs.push(Math.floor((lo + hi) / 2));
+// Evenly-spaced candidate columns for ladders. Spacing comfortably exceeds the
+// grab detection window (±14 px) so ladders on any two columns never overlap.
+const LADDER_COL_SEP = 96;
+const LADDER_COLUMNS: number[] = (() => {
+  const cols: number[] = [];
+  for (let x = 80; x <= CANVAS_W - 80; x += LADDER_COL_SEP) cols.push(x);
+  return cols;
+})();
+
+// Minimum spacing between two ladders on the SAME span. Larger than one column
+// step so two ladders never sit right next to each other with empty wall (and
+// nothing else) between them — that pairing looks pointless to the player.
+const LADDER_MIN_GAP = LADDER_COL_SEP * 2; // 192 px
+
+// Pick `count` distinct columns, excluding any used by the vertically-adjacent
+// span. Picked columns are ≥ LADDER_MIN_GAP apart, so two ladders on one span
+// never crowd together; excluded columns also keep spans from stacking.
+function pickLadderColumns(count: number, excludeCols: number[] = []): number[] {
+  const available = shuffle(LADDER_COLUMNS.filter(c => !excludeCols.includes(c)));
+  const picked: number[] = [];
+  for (const c of available) {
+    if (picked.length >= count) break;
+    if (picked.every(p => Math.abs(p - c) >= LADDER_MIN_GAP)) picked.push(c);
   }
-  return xs;
+  return picked.sort((a, b) => a - b);
 }
 
 export function buildLadders(): Ladder[] {
@@ -149,9 +152,11 @@ export function buildLadders(): Ladder[] {
   const gap12 = FLOOR_Y[2] - FLOOR_Y[1];
   const gap23 = FLOOR_Y[3] - FLOOR_Y[2];
 
-  const xs01 = randomLadderXs();
-  const xs12 = randomLadderXs();
-  const xs23 = randomLadderXs();
+  // 2–3 ladders per span. Each span avoids the columns of the span it shares a
+  // floor with (xs01↔xs12 at floor 1, xs12↔xs23 at floor 2) so they never stack.
+  const xs01 = pickLadderColumns(2 + Math.floor(Math.random() * 2));
+  const xs12 = pickLadderColumns(2 + Math.floor(Math.random() * 2), xs01);
+  const xs23 = pickLadderColumns(2 + Math.floor(Math.random() * 2), xs12);
 
   FLOOR_LADDER_XS = [
     xs01,

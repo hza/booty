@@ -737,26 +737,28 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState) {
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText('CREW:', 20, hudY + 22);
+  ctx.fillText('CREW:', 20, hudY + 20);
   for (let i = 0; i < state.lives; i++) {
-    drawMiniPlayer(ctx, 95 + i * 26, hudY + 22);
+    drawMiniPlayer(ctx, 90 + i * 26, hudY + 20);
   }
 
-  // Key collection status — two rows of 6
+  // Key collection status — two rows of 4
   ctx.fillStyle = '#ffd700';
   ctx.font = 'bold 11px monospace';
   ctx.textAlign = 'left';
-  ctx.fillText('KEYS:', 20, hudY + 38);
-  for (let i = 0; i < 12; i++) {
+  ctx.fillText('KEYS:', 20, hudY + 46);
+  for (let i = 0; i < 8; i++) {
     const kn = i + 1;
     const has = state.collectedKeys.has(kn);
-    const col = i % 6;
-    const row = Math.floor(i / 6);
-    const kx = 75 + col * 28;
-    const ky = hudY + 32 + row * 18;
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    const kx = 90 + col * 26;
+    const ky = hudY + 38 + row * 20;
+    ctx.textAlign = 'center';
     ctx.fillStyle = has ? DOOR_COLORS[kn] ?? '#ffd700' : 'rgba(255,255,255,0.2)';
     ctx.fillText(`${kn}`, kx, ky);
   }
+  ctx.textAlign = 'left';
 
   // Score
   ctx.fillStyle = '#00ff88';

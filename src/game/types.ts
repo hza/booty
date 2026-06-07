@@ -17,6 +17,7 @@ export interface Player {
   vy: number;
   onGround: boolean;
   onLadder: boolean;
+  activeLadder: Ladder | null; // the ladder currently being climbed (null when off)
   facingRight: boolean;
   animFrame: number;
   animTimer: number;

@@ -41,19 +41,17 @@ function onPlatform(
   return { hit, topY };
 }
 
-// Returns a ladder the player is horizontally aligned with and vertically near.
-// Uses generous vertical tolerance so the player can grab from either end.
-function onLadderCheck(
+// Returns all ladders the player is horizontally and vertically aligned with.
+function nearbyLadders(
   px: number, py: number, pw: number, ph: number,
   ladders: Ladder[]
-): Ladder | null {
+): Ladder[] {
   const cx = px + pw / 2;
-  for (const l of ladders) {
+  return ladders.filter(l => {
     const withinX = cx >= l.x - 14 && cx <= l.x + 14;
     const withinY = py + ph > l.y - 2 && py < l.y + l.h + 2;
-    if (withinX && withinY) return l;
-  }
-  return null;
+    return withinX && withinY;
+  });
 }
 
 function clampToWalls(px: number, pw: number): number {
@@ -97,7 +95,7 @@ export function initState(): GameState {
     player: {
       x: 300, y: FLOOR_Y[0] - PLAYER_H,
       vx: 0, vy: 0,
-      onGround: false, onLadder: false,
+      onGround: false, onLadder: false, activeLadder: null,
       facingRight: true,
       animFrame: 0, animTimer: 0,
       invincible: 0, dead: false,
@@ -113,7 +111,7 @@ export function initState(): GameState {
     openedDoors: new Set(),
     score: 0,
     treasureCount: 0,
-    lives: 3,
+    lives: 5,
     gameOver: false,
     levelComplete: false,
     deathTimer: 0,
@@ -127,7 +125,7 @@ export function resetLevel(state: GameState) {
   state.player = {
     x: 300, y: FLOOR_Y[0] - PLAYER_H,
     vx: 0, vy: 0,
-    onGround: false, onLadder: false,
+    onGround: false, onLadder: false, activeLadder: null,
     facingRight: true,
     animFrame: 0, animTimer: 0,
     invincible: 120, dead: false,
@@ -184,11 +182,11 @@ function updatePlayer(state: GameState, input: InputState) {
 
   if (player.invincible > 0) player.invincible--;
 
-  // Find ladder
-  const ladder = onLadderCheck(player.x, player.y, PLAYER_W, PLAYER_H, ladders);
-
   // ── Ladder mode ──
-  if (player.onLadder && ladder) {
+  // Use the ladder we actually grabbed — never re-detect by position, or an
+  // overlapping adjacent ladder could hijack the climb and dump us off early.
+  if (player.onLadder && player.activeLadder) {
+    const ladder = player.activeLadder;
     player.vx = 0;
     player.vy = 0;
     if (input.up)   player.vy = -LADDER_SPEED;
@@ -208,6 +206,7 @@ function updatePlayer(state: GameState, input: InputState) {
       player.vy = 0;
       player.onGround = true;
       player.onLadder = false;
+      player.activeLadder = null;
       player.animTimer++;
       return;
     }
@@ -218,6 +217,7 @@ function updatePlayer(state: GameState, input: InputState) {
       player.vy = 0;
       player.onGround = true;
       player.onLadder = false;
+      player.activeLadder = null;
       player.animTimer++;
       return;
     }
@@ -225,6 +225,7 @@ function updatePlayer(state: GameState, input: InputState) {
     // Jump off ladder
     if (input.jump) {
       player.onLadder = false;
+      player.activeLadder = null;
       player.vy = -9;
     }
 
@@ -233,22 +234,19 @@ function updatePlayer(state: GameState, input: InputState) {
   }
 
   // ── Grab ladder ──
-  if (ladder) {
-    const feet       = player.y + PLAYER_H;
-    const ladderTop  = ladder.y;
-    const ladderBot  = ladder.y + ladder.h;
-
-    // Grab going UP: player is on the lower floor (feet near ladderBottom)
-    const atBottom = Math.abs(feet - ladderBot) <= 10;
-    // Grab going DOWN: player is on the upper floor (feet near ladderTop)
-    const atTop    = Math.abs(feet - ladderTop) <= 10;
+  // Iterate all nearby ladders so vertically adjacent ladders at similar X
+  // don't block each other — pick the first one matching the intended direction.
+  for (const l of nearbyLadders(player.x, player.y, PLAYER_W, PLAYER_H, ladders)) {
+    const feet     = player.y + PLAYER_H;
+    const atBottom = Math.abs(feet - (l.y + l.h)) <= 10; // on lower floor → go up
+    const atTop    = Math.abs(feet - l.y) <= 10;          // on upper floor → go down
 
     if ((input.up && atBottom) || (input.down && atTop)) {
       player.onLadder = true;
+      player.activeLadder = l;
       player.vy = 0;
       player.vx = 0;
-      // Snap X immediately so the player centres on the ladder
-      player.x = ladder.x - PLAYER_W / 2;
+      player.x = l.x - PLAYER_W / 2;
       player.animTimer++;
       return;
     }
@@ -256,6 +254,7 @@ function updatePlayer(state: GameState, input: InputState) {
 
   // ── Normal movement ──
   player.onLadder = false;
+  player.activeLadder = null;
 
   if (input.left) {
     player.vx = -PLAYER_SPEED;
