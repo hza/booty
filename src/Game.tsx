@@ -21,6 +21,13 @@ export default function Game() {
   const jumpPressedRef = useRef(false);
 
   const handleKey = useCallback((e: KeyboardEvent, down: boolean) => {
+    // Restart on game over
+    if (down && e.code === 'Enter' && stateRef.current.gameOver) {
+      e.preventDefault();
+      stateRef.current = initState();
+      return;
+    }
+
     const key = KEYS_MAP[e.code];
     if (!key) return;
     e.preventDefault();
@@ -36,11 +43,6 @@ export default function Game() {
       }
     } else {
       inputRef.current[key] = down;
-    }
-
-    // Restart on game over
-    if (down && e.code === 'Enter' && stateRef.current.gameOver) {
-      stateRef.current = initState();
     }
   }, []);
 

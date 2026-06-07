@@ -97,6 +97,16 @@ export interface Prop {
   flip: boolean; // mirror horizontally for variety
 }
 
+export interface LevelSnapshot {
+  pirates: Pirate[];
+  keys: Key[];
+  doors: Door[];
+  portals: Portal[];
+  ladders: Ladder[];
+  treasures: Treasure[];
+  props: Prop[];
+}
+
 export interface GameState {
   player: Player;
   pirates: Pirate[];
@@ -107,6 +117,7 @@ export interface GameState {
   ladders: Ladder[];
   treasures: Treasure[];
   props: Prop[];
+  initialLevel: LevelSnapshot;
   collectedKeys: Set<number>;
   openedDoors: Set<number>;
   score: number;
