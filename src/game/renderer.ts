@@ -125,7 +125,7 @@ function drawPlatforms(ctx: CanvasRenderingContext2D, platforms: Platform[]) {
 // ─── Ladders ──────────────────────────────────────────────────────────────────
 
 function drawLadder(ctx: CanvasRenderingContext2D, ladder: Ladder) {
-  const lw = 18;
+  const lw = 24;
   const railX1 = ladder.x - lw / 2 + 3;
   const railX2 = ladder.x + lw / 2 - 3;
   const top = ladder.y;
