@@ -7,7 +7,7 @@ import {
   FLOOR_Y, FLOOR_H, CANVAS_W, CANVAS_H
 } from './constants';
 import {
-  buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals, buildPirates, buildTreasures, buildProps, checkSolvable
+  buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals, buildPirates, buildTreasures, buildProps, checkSolvable, minDoorsToTreasure
 } from './level';
 
 const PORTAL_W = 36;
@@ -88,6 +88,9 @@ function spawnParticles(
 // ─── Init / reset ─────────────────────────────────────────────────────────────
 
 function buildLevelElements() {
+  type LevelElements = { ladders: Ladder[]; portals: ReturnType<typeof buildPortals>; doors: ReturnType<typeof buildDoors>; keys: ReturnType<typeof buildKeys>; treasures: ReturnType<typeof buildTreasures> };
+  let lastSolvable: LevelElements | null = null;
+
   for (let attempt = 0; attempt < 50; attempt++) {
     const ladders = buildLadders();
     const portals = buildPortals();
@@ -95,10 +98,19 @@ function buildLevelElements() {
     const keys = buildKeys(doors, portals);
     const treasures = buildTreasures(doors);
     if (checkSolvable(doors, keys, ladders, treasures)) {
-      return { ladders, portals, doors, keys, treasures };
+      const depths = treasures.map(t => minDoorsToTreasure(t, doors, keys, ladders));
+      if (depths.every(d => d >= 3)) return { ladders, portals, doors, keys, treasures };
+      // Solvable but below depth target — keep best fallback (highest min depth)
+      const minDepth = Math.min(...depths);
+      const bestDepth = lastSolvable
+        ? Math.min(...lastSolvable.treasures.map(t => minDoorsToTreasure(t, lastSolvable!.doors, lastSolvable!.keys, lastSolvable!.ladders)))
+        : -1;
+      if (minDepth > bestDepth) lastSolvable = { ladders, portals, doors, keys, treasures };
     }
   }
-  // Fallback: return last attempt even if not verified (extremely rare)
+  // Fallback: use a verified-solvable attempt if one exists
+  if (lastSolvable) return lastSolvable;
+  // Last resort: generate fresh (should be extremely rare)
   const ladders = buildLadders();
   const portals = buildPortals();
   const doors = buildDoors(portals);
@@ -121,7 +133,7 @@ function snapshotLevel(pirates: ReturnType<typeof buildPirates>, ladders: Return
 
 export function initState(): GameState {
   const { ladders, portals, doors, keys, treasures } = buildLevelElements();
-  const pirates = buildPirates();
+  const pirates = buildPirates(doors);
   const props = buildProps(doors, portals);
   const initialLevel = snapshotLevel(pirates, ladders, portals, doors, keys, treasures, props);
   return {
@@ -167,7 +179,7 @@ export function resetLevel(state: GameState, newLevel = false) {
   };
   if (newLevel) {
     const { ladders, portals, doors, keys, treasures } = buildLevelElements();
-    const pirates = buildPirates();
+    const pirates = buildPirates(doors);
     const props = buildProps(doors, portals);
     state.ladders = ladders;
     state.pirates = pirates;

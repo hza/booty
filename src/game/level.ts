@@ -193,7 +193,7 @@ export function buildDoors(portals: Portal[]): Door[] {
   let doorNum = 1;
 
   for (let fi = 0; fi < 4 && doors.length < 8; fi++) {
-    const want = Math.random() < 0.5 ? 1 : 2;
+    const want = Math.random() < 0.1 ? 1 : 2;
     const takenXs: number[] = [];
 
     for (let i = 0; i < want && doors.length < 8; i++) {
@@ -310,15 +310,50 @@ export function buildKeys(doors: Door[], portals: Portal[]): Key[] {
 const WALL_LEFT  = 16;               // right edge of left wall
 const WALL_RIGHT = CANVAS_W - 16;    // left edge of right wall
 
-export function buildPirates(): Pirate[] {
-  return [
-    { id: 0, x: 100, y: FLOOR_Y[0] - 32, vx: -TILE * 0.045, facingRight: false, floorIndex: 0, animFrame: 0, animTimer: 0,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
-    { id: 1, x: 700, y: FLOOR_Y[0] - 32, vx:  TILE * 0.045, facingRight: true,  floorIndex: 0, animFrame: 2, animTimer: 10, patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
-    { id: 2, x: 400, y: FLOOR_Y[1] - 32, vx: -TILE * 0.045, facingRight: false, floorIndex: 1, animFrame: 1, animTimer: 5,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
-    { id: 3, x: 560, y: FLOOR_Y[2] - 32, vx:  TILE * 0.045, facingRight: true,  floorIndex: 2, animFrame: 0, animTimer: 0,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
-    { id: 4, x: 180, y: FLOOR_Y[3] - 32, vx: -TILE * 0.045, facingRight: false, floorIndex: 3, animFrame: 2, animTimer: 15, patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
-    { id: 5, x: 580, y: FLOOR_Y[3] - 32, vx:  TILE * 0.045, facingRight: true,  floorIndex: 3, animFrame: 1, animTimer: 8,  patrolLeft: WALL_LEFT, patrolRight: WALL_RIGHT },
-  ];
+const MIN_PATROL_WIDTH = 160; // minimum segment width for a pirate to be placed
+
+export function buildPirates(doors: Door[]): Pirate[] {
+  const pirates: Pirate[] = [];
+  const animOffsets = [0, 10, 5, 15];
+  const animFrameStarts = [0, 2, 1, 0];
+
+  for (let fi = 0; fi < 4; fi++) {
+    // Compute door-split segments for this floor (all doors closed)
+    const doorXs = doors
+      .filter(d => doorFloor(d) === fi)
+      .map(d => d.x)
+      .sort((a, b) => a - b);
+
+    const segments: Array<[number, number]> = [];
+    let left = WALL_LEFT;
+    for (const dx of doorXs) { segments.push([left, dx - 4]); left = dx + 4; }
+    segments.push([left, WALL_RIGHT]);
+
+    // Pick the widest segment that meets minimum patrol width
+    const wide = segments
+      .filter(([l, r]) => r - l >= MIN_PATROL_WIDTH)
+      .sort(([al, ar], [bl, br]) => (br - bl) - (ar - al));
+
+    if (wide.length === 0) continue; // no room on this floor — skip
+
+    const [pl, pr] = wide[0];
+    const midX = Math.round((pl + pr) / 2);
+    const facingRight = fi % 2 === 0;
+    pirates.push({
+      id: fi,
+      x: midX,
+      y: FLOOR_Y[fi] - 32,
+      vx: (facingRight ? 1 : -1) * TILE * 0.045,
+      facingRight,
+      floorIndex: fi,
+      animFrame: animFrameStarts[fi],
+      animTimer: animOffsets[fi],
+      patrolLeft: pl,
+      patrolRight: pr,
+    });
+  }
+
+  return pirates;
 }
 
 // ─── Static decoration (barrels, crates, sacks…) ─────────────────────────────
@@ -397,7 +432,12 @@ export function buildTreasures(doors: Door[]): Treasure[] {
   const TREASURE_SEP = 80;
 
   const treasures: Treasure[] = [];
-  const usedFloors = shuffle([0, 1, 2, 3]).slice(0, 2);
+  // Bias toward floors 2-3 (harder to reach, more likely behind doors)
+  const floorPool = shuffle([0, 1, 2, 2, 3, 3]);
+  const usedFloors: number[] = [];
+  for (const f of floorPool) {
+    if (!usedFloors.includes(f) && usedFloors.length < 2) usedFloors.push(f);
+  }
   const takenXs: number[] = [];
 
   for (let i = 0; i < 2; i++) {
@@ -450,25 +490,95 @@ function sameSegment(fi: number, a: number, b: number, openDoorIds: Set<number>,
   return floorSegments(fi, openDoorIds, doors).some(([l, r]) => a >= l && a <= r && b >= l && b <= r);
 }
 
+function keyFloorIndex(k: Key): number {
+  for (let fi = 0; fi < 4; fi++) if (Math.abs(k.y + 26 - FLOOR_Y[fi]) < 2) return fi;
+  return -1;
+}
+function treasureFloorIndex(t: Treasure): number {
+  for (let fi = 0; fi < 4; fi++) if (Math.abs(t.y + 24 - FLOOR_Y[fi]) < 2) return fi;
+  return -1;
+}
+function ladderSpan(l: Ladder): [number, number] {
+  for (let fi = 0; fi < 3; fi++) if (l.y === FLOOR_Y[fi]) return [fi, fi + 1];
+  return [-1, -1];
+}
+
+export function minDoorsToTreasure(
+  treasure: Treasure,
+  doors: Door[],
+  keys: Key[],
+  ladders: Ladder[],
+): number {
+  function closure(openDoorIds: Set<number>) {
+    const haveKeys = new Set<number>();
+    const waypoints: Map<number, Set<number>> = new Map();
+    for (let fi = 0; fi < 4; fi++) waypoints.set(fi, new Set());
+
+    function isReachable(fi: number, x: number): boolean {
+      for (const rx of waypoints.get(fi)!) {
+        if (sameSegment(fi, rx, x, openDoorIds, doors)) return true;
+      }
+      return false;
+    }
+    function addWaypoint(fi: number, x: number): boolean {
+      if (isReachable(fi, x)) return false;
+      waypoints.get(fi)!.add(x);
+      return true;
+    }
+
+    addWaypoint(0, 300);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const l of ladders) {
+        const [f1, f2] = ladderSpan(l);
+        if (f1 < 0) continue;
+        if (isReachable(f1, l.x) && addWaypoint(f2, l.x)) changed = true;
+        if (isReachable(f2, l.x) && addWaypoint(f1, l.x)) changed = true;
+      }
+      for (const k of keys) {
+        if (haveKeys.has(k.number)) continue;
+        const fi = keyFloorIndex(k);
+        if (fi >= 0 && isReachable(fi, k.x)) { haveKeys.add(k.number); changed = true; }
+      }
+    }
+    return { haveKeys, isReachable };
+  }
+
+  const tfi = treasureFloorIndex(treasure);
+  const visited = new Set<number>();
+  const queue: Array<[number, number]> = [[0, 0]]; // [cost, bitmask of open doors]
+
+  while (queue.length > 0) {
+    const [cost, mask] = queue.shift()!;
+    if (visited.has(mask)) continue;
+    visited.add(mask);
+
+    const openIds = new Set(doors.filter((_, i) => mask & (1 << i)).map(d => d.id));
+    const { haveKeys, isReachable } = closure(openIds);
+
+    if (tfi >= 0 && isReachable(tfi, treasure.x)) return cost;
+
+    for (let i = 0; i < doors.length; i++) {
+      if (mask & (1 << i)) continue;
+      const door = doors[i];
+      if (!haveKeys.has(door.number)) continue;
+      const dfi = doorFloor(door);
+      if (isReachable(dfi, door.x - 10) || isReachable(dfi, door.x + 10)) {
+        queue.push([cost + 1, mask | (1 << i)]);
+      }
+    }
+  }
+
+  return Infinity;
+}
+
 export function checkSolvable(
   doors: Door[],
   keys: Key[],
   ladders: Ladder[],
   treasures: Treasure[],
 ): boolean {
-  function keyFloorIndex(k: Key): number {
-    for (let fi = 0; fi < 4; fi++) if (Math.abs(k.y + 26 - FLOOR_Y[fi]) < 2) return fi;
-    return -1;
-  }
-  function treasureFloorIndex(t: Treasure): number {
-    for (let fi = 0; fi < 4; fi++) if (Math.abs(t.y + 24 - FLOOR_Y[fi]) < 2) return fi;
-    return -1;
-  }
-  function ladderSpan(l: Ladder): [number, number] {
-    for (let fi = 0; fi < 3; fi++) if (l.y === FLOOR_Y[fi]) return [fi, fi + 1];
-    return [-1, -1];
-  }
-
   const openDoorIds = new Set<number>();
   const haveKeys = new Set<number>();
   // Store known-reachable waypoint x per floor (ladder x's + player start)
