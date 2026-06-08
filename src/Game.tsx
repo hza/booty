@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { CANVAS_W, CANVAS_H } from './game/constants';
 import type { InputState, GameState } from './game/types';
-import { initState, update } from './game/gameLogic';
+import { initState, update } from './game/state';
 import { render } from './game/renderer';
 
 const KEYS_MAP: Record<string, keyof InputState> = {

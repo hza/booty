@@ -1,5 +1,5 @@
-import type { Platform, Ladder, Key, Door, Portal, Pirate, Treasure, Prop, PropKind } from './types';
-import { FLOOR_Y, FLOOR_H, CANVAS_W, TILE } from './constants';
+import type { Platform, Ladder, Key, Door, Portal, Pirate, Treasure, Prop, PropKind } from '../types';
+import { FLOOR_Y, FLOOR_H, CANVAS_W, TILE, PORTAL_W, PORTAL_H, DOOR_HALF_W } from '../constants';
 
 // Ceiling above each floor's barrier. Lower floors use the floor above (+ its
 // thickness); the top floor has no floor above it, so mirror the inter-floor
@@ -10,9 +10,6 @@ const CEILING_Y = [
   FLOOR_Y[1] + FLOOR_H,
   FLOOR_Y[2] + FLOOR_H,
 ];
-
-const PORTAL_W = 36;
-const PORTAL_H = 56;
 
 // Ladder x positions that doors/keys/portals on each floor must avoid.
 // Populated by buildLadders() — must be called before buildDoors/buildKeys/buildPortals.
@@ -470,7 +467,7 @@ export function buildTreasures(doors: Door[]): Treasure[] {
 
 // ─── Solvability check ────────────────────────────────────────────────────────
 
-const DOOR_HALF_W = 4; // half of DOOR_BAR_W for segment splitting
+// DOOR_HALF_W imported from constants
 const WALL_L = 16;
 const WALL_R = CANVAS_W - 16;
 

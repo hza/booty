@@ -17,6 +17,11 @@ export const PIRATE_SPEED = 1.4;
 export const FLOOR_Y = [110, 220, 330, 440]; // top of each floor surface — evenly spaced so every floor has equal height
 export const FLOOR_H = 16;
 
+export const PORTAL_W = 36;
+export const PORTAL_H = 56;
+export const DOOR_BAR_W = 8;   // full collision width of a door barrier
+export const DOOR_HALF_W = 4;  // half-width used for floor-segment splitting
+
 export const COLORS = {
   sky: '#0a2a6e',
   wall: '#2a3a8a',
