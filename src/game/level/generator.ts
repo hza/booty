@@ -211,6 +211,7 @@ export function buildPortals(ctx: RoomContext): Portal[] {
     if (candidates.length === 0) continue;
     portals.push({
       id: i,
+      name: String.fromCharCode(65 + i),
       x: pickRandom(candidates),
       y: floorYs[fi] - PORTAL_H,
       kind: 'level-exit',
@@ -218,7 +219,7 @@ export function buildPortals(ctx: RoomContext): Portal[] {
   }
 
   if (portals.length === 0) {
-    portals.push({ id: 0, x: 48, y: floorYs[0] - PORTAL_H, kind: 'level-exit' });
+    portals.push({ id: 0, name: 'A', x: 48, y: floorYs[0] - PORTAL_H, kind: 'level-exit' });
   }
 
   return portals;

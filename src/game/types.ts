@@ -60,6 +60,7 @@ export interface Door {
 // Large green door shape — entering triggers next level or transitions to another room
 export interface Portal {
   id: number;
+  name: string; // single letter label: A, B, C …
   x: number;
   y: number;    // bottom sits on floor surface
   kind: 'level-exit' | 'room-link';

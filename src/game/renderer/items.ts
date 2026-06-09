@@ -115,11 +115,26 @@ export function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: 
   ctx.beginPath(); ctx.roundRect(x, y, w, h, [6, 6, 0, 0]); ctx.stroke();
   ctx.shadowBlur = 0;
 
-  ctx.fillStyle = active ? `rgba(180,255,180,${pulse})` : `rgba(140,140,140,${pulse})`;
-  ctx.font = 'bold 8px monospace';
+  // Portal letter label (A, B, C …)
+  const cx = x + w / 2;
+  const labelY = y + h / 2 - 4;
+  ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = `rgba(0,255,80,${pulse})`;
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+  ctx.lineWidth = 4;
+  ctx.lineJoin = 'round';
+  ctx.strokeText(portal.name, cx, labelY);
+  ctx.fillStyle = active ? `rgba(200,255,200,${pulse})` : `rgba(160,160,160,${pulse})`;
+  ctx.fillText(portal.name, cx, labelY);
+  ctx.shadowBlur = 0;
+
+  ctx.font = 'bold 7px monospace';
   ctx.textBaseline = 'top';
-  ctx.fillText('EXIT', x + w / 2, y + 4);
+  ctx.fillStyle = active ? `rgba(180,255,180,${pulse * 0.7})` : `rgba(140,140,140,${pulse * 0.7})`;
+  ctx.fillText('EXIT', cx, y + 4);
 
   ctx.globalAlpha = (pulse - 0.7) * 0.6;
   ctx.fillStyle = '#00ff44';
