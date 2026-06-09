@@ -134,7 +134,8 @@ export function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: 
   ctx.font = 'bold 7px monospace';
   ctx.textBaseline = 'top';
   ctx.fillStyle = active ? `rgba(180,255,180,${pulse * 0.7})` : `rgba(140,140,140,${pulse * 0.7})`;
-  ctx.fillText('EXIT', cx, y + 4);
+  const topLabel = active ? 'EXIT' : portal.kind === 'room-link' ? `→R${(portal.targetRoomId ?? 0) + 1}` : 'EXIT';
+  ctx.fillText(topLabel, cx, y + 4);
 
   ctx.globalAlpha = (pulse - 0.7) * 0.6;
   ctx.fillStyle = '#00ff44';

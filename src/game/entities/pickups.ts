@@ -26,20 +26,31 @@ export function updatePortals(state: GameState, input: InputState): void {
   const { player } = state;
   if (player.dead) return;
 
-  // Exit is only usable once every treasure on the level is collected.
-  const allTreasuresCollected = state.treasures.every(t => t.collected);
+  if (player.portalCooldown > 0) {
+    player.portalCooldown--;
+    return;
+  }
+
+  // Level exit once all treasures across every room are collected
+  const allTreasuresCollected = state.rooms.every(r => r.treasures.every(t => t.collected));
 
   for (const portal of state.portals) {
     const overlaps = rectsOverlap(
       player.x, player.y, PLAYER_W, PLAYER_H,
       portal.x, portal.y, PORTAL_W, PORTAL_H
     );
-    // Require pressing Down to enter the portal (like walking through a door)
-    if (overlaps && input.down && allTreasuresCollected && portal.kind === 'level-exit') {
+    if (!overlaps || !input.down) continue;
+
+    if (allTreasuresCollected) {
       state.levelComplete = true;
-      state.levelTimer = 90; // ~1.5 seconds of celebration before advancing
+      state.levelTimer = 90;
       spawnParticles(state.particles, portal.x + PORTAL_W / 2, portal.y + PORTAL_H / 2, '#00ff44', 24, 6);
       spawnParticles(state.particles, portal.x + PORTAL_W / 2, portal.y + PORTAL_H / 2, '#ffffff', 16, 4);
+    } else if (portal.kind === 'room-link' && portal.targetRoomId !== undefined) {
+      state.pendingRoomSwitch = { targetRoomId: portal.targetRoomId, portalName: portal.name };
+      spawnParticles(state.particles, portal.x + PORTAL_W / 2, portal.y + PORTAL_H / 2, '#44aaff', 14, 4);
+      player.portalCooldown = 60;
+      break;
     }
   }
 }

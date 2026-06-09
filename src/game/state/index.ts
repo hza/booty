@@ -1,5 +1,5 @@
 import type { GameState, Room, LevelSnapshot, InputState } from '../types';
-import { PLAYER_H } from '../constants';
+import { PLAYER_H, PLAYER_W, PORTAL_W, PORTAL_H } from '../constants';
 import {
   defaultRoomDef,
   buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals,
@@ -36,19 +36,33 @@ function attemptRoom(def: RoomDef): { room: Room; minDepth: number } | null {
   return { room, minDepth: Math.min(...depths) };
 }
 
-function buildRooms(): Room[] {
-  const def = defaultRoomDef(0);
+function buildSolvableRoom(def: RoomDef): Room {
   let best: { room: Room; minDepth: number } | null = null;
 
   for (let attempt = 0; attempt < 50; attempt++) {
     const result = attemptRoom(def);
     if (!result) continue;
-    if (result.minDepth >= 3) return [result.room];
+    if (result.minDepth >= 3) return result.room;
     if (!best || result.minDepth > best.minDepth) best = result;
   }
 
-  // Fallback: return best solvable, or an unchecked room if none was solvable.
-  return [best?.room ?? attemptRoom(def)!.room];
+  return best?.room ?? attemptRoom(def)!.room;
+}
+
+function buildRooms(): Room[] {
+  const room0 = buildSolvableRoom(defaultRoomDef(0));
+  const room1 = buildSolvableRoom(defaultRoomDef(1));
+
+  // Match portal counts between rooms so letters align, then link by name
+  const count = Math.min(room0.portals.length, room1.portals.length);
+  room0.portals = room0.portals.slice(0, count).map((p, i) => ({
+    ...p, name: String.fromCharCode(65 + i), kind: 'room-link' as const, targetRoomId: 1,
+  }));
+  room1.portals = room1.portals.slice(0, count).map((p, i) => ({
+    ...p, name: String.fromCharCode(65 + i), kind: 'room-link' as const, targetRoomId: 0,
+  }));
+
+  return [room0, room1];
 }
 
 function snapshotRooms(rooms: Room[]): LevelSnapshot {
@@ -94,7 +108,7 @@ export function initState(): GameState {
       onGround: false, onLadder: false, activeLadder: null,
       facingRight: true,
       animFrame: 0, animTimer: 0,
-      invincible: 0, dead: false,
+      invincible: 0, dead: false, portalCooldown: 0,
     },
     rooms, currentRoomId,
     pirates: room.pirates,
@@ -153,7 +167,7 @@ export function resetLevel(state: GameState, newLevel = false): void {
     onGround: false, onLadder: false, activeLadder: null,
     facingRight: true,
     animFrame: 0, animTimer: 0,
-    invincible: newLevel ? 0 : 120, dead: false,
+    invincible: newLevel ? 0 : 120, dead: false, portalCooldown: 0,
   };
 
   state.collectedKeys = new Set();
@@ -197,6 +211,24 @@ export function update(state: GameState, input: InputState): void {
   updatePirates(state);
   updateKeys(state);
   updatePortals(state, input);
+
+  if (state.pendingRoomSwitch) {
+    const { targetRoomId, portalName } = state.pendingRoomSwitch;
+    state.pendingRoomSwitch = undefined;
+    const targetRoom = state.rooms[targetRoomId];
+    state.currentRoomId = targetRoomId;
+    applyRoom(state, targetRoom);
+    const dest = targetRoom.portals.find(p => p.name === portalName);
+    if (dest) {
+      state.player.x = dest.x + (PORTAL_W - PLAYER_W) / 2;
+      state.player.y = dest.y + PORTAL_H - PLAYER_H;
+    }
+    state.player.vx = 0;
+    state.player.vy = 0;
+    state.player.onLadder = false;
+    state.player.activeLadder = null;
+  }
+
   updateTreasures(state);
   checkDeathTimer(state);
 }

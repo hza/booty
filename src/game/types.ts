@@ -23,6 +23,7 @@ export interface Player {
   animTimer: number;
   invincible: number; // frames of invincibility after hit
   dead: boolean;
+  portalCooldown: number; // frames before portal can be used again
 }
 
 export interface Pirate {
@@ -144,6 +145,7 @@ export interface GameState {
   levelTimer: number;   // counts down after level complete, then auto-advances
   camera: Vec2;
   particles: Particle[];
+  pendingRoomSwitch?: { targetRoomId: number; portalName: string };
 }
 
 export interface Particle {

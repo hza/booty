@@ -15,7 +15,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, time: nu
   drawPlatforms(ctx, state.platforms, state.ladders);
   for (const prop of state.props) drawProp(ctx, prop);
 
-  const treasuresCollected = state.treasures.every(t => t.collected);
+  const treasuresCollected = state.rooms.every(r => r.treasures.every(t => t.collected));
   for (const portal of state.portals) drawPortal(ctx, portal, time, treasuresCollected);
   for (const door of state.doors) drawDoor(ctx, door);
   for (const key of state.keys) drawKey(ctx, key, time);
