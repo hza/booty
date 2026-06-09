@@ -342,11 +342,19 @@ export function buildPirates(doors: Door[], def: RoomDef): Pirate[] {
     for (const dx of doorXs) { segments.push([left, dx - 4]); left = dx + 4; }
     segments.push([left, wallRight]);
 
-    const wide = segments
+    let wide = segments
       .filter(([l, r]) => r - l >= MIN_PATROL_WIDTH)
       .sort(([al, ar], [bl, br]) => (br - bl) - (ar - al));
 
     if (wide.length === 0) continue;
+
+    // On the spawn floor, never place a pirate in the segment containing the
+    // spawn point — the player would be inside its patrol range from frame 1.
+    if (fi === def.spawnFloor) {
+      const safe = wide.filter(([l, r]) => def.spawnX < l || def.spawnX > r);
+      if (safe.length === 0) continue;
+      wide = safe;
+    }
 
     const [pl, pr] = wide[0];
     const midX = Math.round((pl + pr) / 2);
