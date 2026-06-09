@@ -140,6 +140,7 @@ export interface GameState {
   score: number;
   treasureCount: number;
   lives: number;
+  levelNumber: number;
   gameOver: boolean;
   levelComplete: boolean;
   deathTimer: number;

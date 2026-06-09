@@ -127,6 +127,7 @@ export function initState(): GameState {
     score: 0,
     treasureCount: 0,
     lives: 5,
+    levelNumber: 1,
     gameOver: false,
     levelComplete: false,
     deathTimer: 0,
@@ -140,6 +141,7 @@ export function initState(): GameState {
 
 export function resetLevel(state: GameState, newLevel = false): void {
   if (newLevel) {
+    state.levelNumber++;
     const rooms = buildRooms();
     state.rooms        = rooms;
     state.currentRoomId = 0;

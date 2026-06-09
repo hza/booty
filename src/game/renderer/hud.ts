@@ -69,12 +69,18 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.fillText(`TREASURE  ${state.treasureCount}`, CANVAS_W / 2, hudY + 50);
   ctx.shadowBlur = 0;
 
+  ctx.fillStyle = '#ffd700';
+  ctx.shadowColor = '#ffd700';
+  ctx.shadowBlur = 8;
+  ctx.font = 'bold 18px monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(`LEVEL  ${state.levelNumber}`, CANVAS_W - 20, hudY + 22);
+  ctx.shadowBlur = 0;
+
   ctx.fillStyle = 'rgba(180,200,255,0.4)';
   ctx.font = '11px monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText('← → move   ↑↓ ladder   SPACE jump', CANVAS_W - 20, hudY + 22);
-  ctx.fillText('Keys open doors · ↓ to enter portal', CANVAS_W - 20, hudY + 42);
-  ctx.fillText('Avoid pirates!', CANVAS_W - 20, hudY + 62);
+  ctx.fillText('← → move   ↑↓ ladder   SPACE jump', CANVAS_W - 20, hudY + 42);
+  ctx.fillText('Keys open doors · ↓ to enter portal', CANVAS_W - 20, hudY + 58);
 }
 
 function drawMiniPlayer(ctx: CanvasRenderingContext2D, x: number, y: number): void {
