@@ -35,7 +35,7 @@ export function updatePortals(state: GameState, input: InputState): void {
       portal.x, portal.y, PORTAL_W, PORTAL_H
     );
     // Require pressing Down to enter the portal (like walking through a door)
-    if (overlaps && input.down && allTreasuresCollected) {
+    if (overlaps && input.down && allTreasuresCollected && portal.kind === 'level-exit') {
       state.levelComplete = true;
       state.levelTimer = 90; // ~1.5 seconds of celebration before advancing
       spawnParticles(state.particles, portal.x + PORTAL_W / 2, portal.y + PORTAL_H / 2, '#00ff44', 24, 6);

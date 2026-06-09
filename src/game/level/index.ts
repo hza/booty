@@ -1,6 +1,7 @@
 export {
   CEILING_Y,
-  FLOOR_LADDER_XS,
+  computeCeilingYs,
+  defaultRoomDef,
   doorFloor,
   buildPlatforms,
   buildLadders,
@@ -10,6 +11,9 @@ export {
   buildPirates,
   buildProps,
   buildTreasures,
+  buildRoom,
 } from './generator';
+
+export type { RoomDef, RoomContext } from './generator';
 
 export { checkSolvable, minDoorsToTreasure } from './solvability';

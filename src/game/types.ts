@@ -57,11 +57,13 @@ export interface Door {
   open: boolean;
 }
 
-// Large green door shape — entering triggers next level
+// Large green door shape — entering triggers next level or transitions to another room
 export interface Portal {
   id: number;
   x: number;
   y: number;    // bottom sits on floor surface
+  kind: 'level-exit' | 'room-link';
+  targetRoomId?: number;  // only for 'room-link' portals
 }
 
 export interface Platform {
@@ -97,14 +99,24 @@ export interface Prop {
   flip: boolean; // mirror horizontally for variety
 }
 
-export interface LevelSnapshot {
-  pirates: Pirate[];
-  keys: Key[];
-  doors: Door[];
-  portals: Portal[];
+export interface Room {
+  id: number;
+  floorYs: number[];
+  platforms: Platform[];
   ladders: Ladder[];
+  doors: Door[];
+  keys: Key[];
+  portals: Portal[];
+  pirates: Pirate[];
   treasures: Treasure[];
   props: Prop[];
+  spawnX: number;
+  spawnFloor: number;
+}
+
+export interface LevelSnapshot {
+  rooms: Room[];
+  currentRoomId: number;
 }
 
 export interface GameState {
@@ -117,6 +129,8 @@ export interface GameState {
   ladders: Ladder[];
   treasures: Treasure[];
   props: Prop[];
+  rooms: Room[];
+  currentRoomId: number;
   initialLevel: LevelSnapshot;
   collectedKeys: Set<number>;
   openedDoors: Set<number>;

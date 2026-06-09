@@ -1,90 +1,110 @@
-import type { GameState, LevelSnapshot, InputState } from '../types';
-import { PLAYER_H, FLOOR_Y } from '../constants';
+import type { GameState, Room, LevelSnapshot, InputState } from '../types';
+import { PLAYER_H } from '../constants';
 import {
+  defaultRoomDef,
   buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals,
   buildPirates, buildTreasures, buildProps, checkSolvable, minDoorsToTreasure,
 } from '../level';
+import type { RoomDef } from '../level';
 import { updatePlayer } from '../entities/player';
 import { updatePirates } from '../entities/pirates';
 import { updateKeys, updatePortals, updateTreasures, updateParticles } from '../entities/pickups';
 
 // ─── Level assembly ───────────────────────────────────────────────────────────
 
-type LevelElements = {
-  ladders: ReturnType<typeof buildLadders>;
-  portals: ReturnType<typeof buildPortals>;
-  doors:   ReturnType<typeof buildDoors>;
-  keys:    ReturnType<typeof buildKeys>;
-  treasures: ReturnType<typeof buildTreasures>;
-};
+function attemptRoom(def: RoomDef): { room: Room; minDepth: number } | null {
+  const { ladders, ctx } = buildLadders(def);
+  const portals   = buildPortals(ctx);
+  const doors     = buildDoors(portals, ctx);
+  const keys      = buildKeys(doors, portals, ctx);
+  const treasures = buildTreasures(doors, ctx);
+  const spawn     = { floorIndex: def.spawnFloor, x: def.spawnX };
 
-function buildLevelElements(): LevelElements {
-  let lastSolvable: LevelElements | null = null;
+  if (!checkSolvable(doors, keys, ladders, treasures, def.floorYs, spawn)) return null;
 
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const ladders   = buildLadders();
-    const portals   = buildPortals();
-    const doors     = buildDoors(portals);
-    const keys      = buildKeys(doors, portals);
-    const treasures = buildTreasures(doors);
-    if (checkSolvable(doors, keys, ladders, treasures)) {
-      const depths = treasures.map(t => minDoorsToTreasure(t, doors, keys, ladders));
-      if (depths.every(d => d >= 3)) return { ladders, portals, doors, keys, treasures };
-      const minDepth = Math.min(...depths);
-      const bestDepth = lastSolvable
-        ? Math.min(...lastSolvable.treasures.map(t => minDoorsToTreasure(t, lastSolvable!.doors, lastSolvable!.keys, lastSolvable!.ladders)))
-        : -1;
-      if (minDepth > bestDepth) lastSolvable = { ladders, portals, doors, keys, treasures };
-    }
-  }
-  if (lastSolvable) return lastSolvable;
-  const ladders   = buildLadders();
-  const portals   = buildPortals();
-  const doors     = buildDoors(portals);
-  const keys      = buildKeys(doors, portals);
-  const treasures = buildTreasures(doors);
-  return { ladders, portals, doors, keys, treasures };
+  const depths = treasures.map(t => minDoorsToTreasure(t, doors, keys, ladders, def.floorYs, spawn));
+  const pirates = buildPirates(doors, def);
+  const props   = buildProps(doors, portals, ctx);
+  const room: Room = {
+    id: def.id,
+    floorYs: def.floorYs,
+    platforms: buildPlatforms(def),
+    ladders, portals, doors, keys, treasures, pirates, props,
+    spawnX: def.spawnX,
+    spawnFloor: def.spawnFloor,
+  };
+  return { room, minDepth: Math.min(...depths) };
 }
 
-function snapshotLevel(
-  pirates:   ReturnType<typeof buildPirates>,
-  ladders:   ReturnType<typeof buildLadders>,
-  portals:   ReturnType<typeof buildPortals>,
-  doors:     ReturnType<typeof buildDoors>,
-  keys:      ReturnType<typeof buildKeys>,
-  treasures: ReturnType<typeof buildTreasures>,
-  props:     ReturnType<typeof buildProps>,
-): LevelSnapshot {
+function buildRooms(): Room[] {
+  const def = defaultRoomDef(0);
+  let best: { room: Room; minDepth: number } | null = null;
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const result = attemptRoom(def);
+    if (!result) continue;
+    if (result.minDepth >= 3) return [result.room];
+    if (!best || result.minDepth > best.minDepth) best = result;
+  }
+
+  // Fallback: return best solvable, or an unchecked room if none was solvable.
+  return [best?.room ?? attemptRoom(def)!.room];
+}
+
+function snapshotRooms(rooms: Room[]): LevelSnapshot {
   return {
-    pirates:   pirates.map(p => ({ ...p })),
-    ladders:   ladders.map(l => ({ ...l })),
-    portals:   portals.map(p => ({ ...p })),
-    doors:     doors.map(d => ({ ...d })),
-    keys:      keys.map(k => ({ ...k })),
-    treasures: treasures.map(t => ({ ...t })),
-    props:     props.map(p => ({ ...p })),
+    currentRoomId: 0,
+    rooms: rooms.map(room => ({
+      ...room,
+      platforms:  room.platforms.map(p => ({ ...p })),
+      ladders:    room.ladders.map(l => ({ ...l })),
+      doors:      room.doors.map(d => ({ ...d })),
+      keys:       room.keys.map(k => ({ ...k })),
+      portals:    room.portals.map(p => ({ ...p })),
+      pirates:    room.pirates.map(p => ({ ...p })),
+      treasures:  room.treasures.map(t => ({ ...t })),
+      props:      room.props.map(p => ({ ...p })),
+    })),
   };
+}
+
+function applyRoom(state: GameState, room: Room): void {
+  state.platforms = room.platforms;
+  state.ladders   = room.ladders;
+  state.doors     = room.doors;
+  state.keys      = room.keys;
+  state.portals   = room.portals;
+  state.pirates   = room.pirates;
+  state.treasures = room.treasures;
+  state.props     = room.props;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export function initState(): GameState {
-  const { ladders, portals, doors, keys, treasures } = buildLevelElements();
-  const pirates = buildPirates(doors);
-  const props   = buildProps(doors, portals);
-  const initialLevel = snapshotLevel(pirates, ladders, portals, doors, keys, treasures, props);
-  return {
+  const rooms = buildRooms();
+  const currentRoomId = 0;
+  const room = rooms[currentRoomId];
+  const initialLevel = snapshotRooms(rooms);
+
+  const state: GameState = {
     player: {
-      x: 300, y: FLOOR_Y[0] - PLAYER_H,
+      x: room.spawnX, y: room.floorYs[room.spawnFloor] - PLAYER_H,
       vx: 0, vy: 0,
       onGround: false, onLadder: false, activeLadder: null,
       facingRight: true,
       animFrame: 0, animTimer: 0,
       invincible: 0, dead: false,
     },
-    pirates, doors, portals, keys,
-    platforms: buildPlatforms(),
-    ladders, treasures, props,
+    rooms, currentRoomId,
+    pirates: room.pirates,
+    doors:   room.doors,
+    portals: room.portals,
+    keys:    room.keys,
+    platforms: room.platforms,
+    ladders:   room.ladders,
+    treasures: room.treasures,
+    props:     room.props,
     initialLevel,
     collectedKeys: new Set(),
     openedDoors: new Set(),
@@ -98,39 +118,44 @@ export function initState(): GameState {
     camera: { x: 0, y: 0 },
     particles: [],
   };
+
+  return state;
 }
 
 export function resetLevel(state: GameState, newLevel = false): void {
+  if (newLevel) {
+    const rooms = buildRooms();
+    state.rooms        = rooms;
+    state.currentRoomId = 0;
+    state.initialLevel = snapshotRooms(rooms);
+  } else {
+    const snap = state.initialLevel;
+    state.currentRoomId = snap.currentRoomId;
+    state.rooms = snap.rooms.map(room => ({
+      ...room,
+      platforms:  room.platforms.map(p => ({ ...p })),
+      ladders:    room.ladders.map(l => ({ ...l })),
+      doors:      room.doors.map(d => ({ ...d })),
+      keys:       room.keys.map(k => ({ ...k })),
+      portals:    room.portals.map(p => ({ ...p })),
+      pirates:    room.pirates.map(p => ({ ...p })),
+      treasures:  room.treasures.map(t => ({ ...t })),
+      props:      room.props.map(p => ({ ...p })),
+    }));
+  }
+
+  const room = state.rooms[state.currentRoomId];
+  applyRoom(state, room);
+
   state.player = {
-    x: 300, y: FLOOR_Y[0] - PLAYER_H,
+    x: room.spawnX, y: room.floorYs[room.spawnFloor] - PLAYER_H,
     vx: 0, vy: 0,
     onGround: false, onLadder: false, activeLadder: null,
     facingRight: true,
     animFrame: 0, animTimer: 0,
-    invincible: 120, dead: false,
+    invincible: newLevel ? 0 : 120, dead: false,
   };
-  if (newLevel) {
-    const { ladders, portals, doors, keys, treasures } = buildLevelElements();
-    const pirates = buildPirates(doors);
-    const props   = buildProps(doors, portals);
-    state.ladders = ladders;
-    state.pirates = pirates;
-    state.doors   = doors;
-    state.portals = portals;
-    state.keys    = keys;
-    state.treasures = treasures;
-    state.props   = props;
-    state.initialLevel = snapshotLevel(pirates, ladders, portals, doors, keys, treasures, props);
-  } else {
-    const s = state.initialLevel;
-    state.ladders   = s.ladders.map(l => ({ ...l }));
-    state.pirates   = s.pirates.map(p => ({ ...p }));
-    state.doors     = s.doors.map(d => ({ ...d }));
-    state.portals   = s.portals.map(p => ({ ...p }));
-    state.keys      = s.keys.map(k => ({ ...k }));
-    state.treasures = s.treasures.map(t => ({ ...t }));
-    state.props     = s.props.map(p => ({ ...p }));
-  }
+
   state.collectedKeys = new Set();
   state.openedDoors   = new Set();
   state.particles     = [];
