@@ -148,20 +148,21 @@ export function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: 
 export function drawKey(ctx: CanvasRenderingContext2D, key: Key, time: number): void {
   if (key.collected) return;
   const bob = Math.sin((time * 0.05 + key.bobTimer) * 0.25) * 3;
+  const color = DOOR_COLORS[key.number] ?? '#ffd700';
   ctx.save();
   ctx.translate(key.x, key.y + bob);
-  ctx.shadowColor = '#ffd700';
+  ctx.shadowColor = color;
   ctx.shadowBlur = 14;
 
   const ringGrad = ctx.createRadialGradient(-2, -2, 2, 0, 0, 8);
-  ringGrad.addColorStop(0, '#ffe066');
-  ringGrad.addColorStop(0.5, '#ffd700');
-  ringGrad.addColorStop(1, '#b8860b');
+  ringGrad.addColorStop(0, '#ffffff');
+  ringGrad.addColorStop(0.4, color);
+  ringGrad.addColorStop(1, '#000000');
   ctx.strokeStyle = ringGrad;
   ctx.lineWidth = 3.5;
   ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.stroke();
 
-  ctx.strokeStyle = '#ffd700';
+  ctx.strokeStyle = color;
   ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(7, 0); ctx.lineTo(18, 0); ctx.stroke();
 
@@ -176,7 +177,7 @@ export function drawKey(ctx: CanvasRenderingContext2D, key: Key, time: number): 
   ctx.lineWidth = 3;
   ctx.lineJoin = 'round';
   ctx.strokeText(String(key.number), 0, 0);
-  ctx.fillStyle = '#ffd700';
+  ctx.fillStyle = color;
   ctx.fillText(String(key.number), 0, 0);
 
   ctx.restore();
