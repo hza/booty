@@ -33,8 +33,10 @@ src/
     │
     ├── — Level generation ──────────────────────────────────
     ├── level/
-    │   └── index.ts     buildPlatforms/Ladders/Doors/Keys/Portals/Pirates/Treasures/Props
-    │                    + checkSolvable / minDoorsToTreasure (BFS solvability)
+    │   ├── index.ts      re-export barrel
+    │   ├── generator.ts  buildPlatforms/Ladders/Doors/Keys/Portals/Pirates/Treasures/Props
+    │   ├── solvability.ts checkSolvable / minDoorsToTreasure (BFS solvability)
+    │   └── level.test.ts vitest suite for level generation
     │
     └── — Rendering ─────────────────────────────────────────
     └── renderer/
@@ -95,8 +97,8 @@ Keyboard → inputRef (Game.tsx)
 | Player movement / ladder / wall collision | `entities/player.ts` |
 | Enemy AI | `entities/pirates.ts` |
 | Pickup logic (keys, doors, portals, treasure) | `entities/pickups.ts` |
-| Level layout rules / clearances | `level/index.ts` lines 1–120 |
-| Level solvability algorithm | `level/index.ts:506–638` |
+| Level layout rules / clearances | `level/generator.ts` lines 1–120 |
+| Level solvability algorithm | `level/solvability.ts` |
 | Sprite drawing (player, pirate) | `renderer/entities.ts` |
 | Interactive item drawing (doors, keys, chests, portals) | `renderer/items.ts` |
 | HUD / game-over / level-clear overlays | `renderer/hud.ts` |
@@ -108,8 +110,8 @@ Keyboard → inputRef (Game.tsx)
 ## Adding a new entity
 
 1. Add interface to `types.ts`, add array field to `GameState`.
-2. Add builder function to `level.ts` (with clearance constants).
-3. Call builder in `initState` and `resetLevel` in `gameLogic.ts`.
+2. Add builder function to `level/generator.ts` (with clearance constants).
+3. Call builder in `initState` and `resetLevel` in `state/index.ts`.
 4. Add update logic to an appropriate `*.ts` file (or a new one).
 5. Add draw function to the appropriate `render*.ts` file.
 6. Call draw in `renderer.ts` in the correct z-order.
