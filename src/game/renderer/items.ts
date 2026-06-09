@@ -117,7 +117,7 @@ export function drawPortal(ctx: CanvasRenderingContext2D, portal: Portal, time: 
 
   // Portal letter label (A, B, C …)
   const cx = x + w / 2;
-  const labelY = y + h / 2 - 4;
+  const labelY = y + h / 2;
   ctx.font = 'bold 14px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
