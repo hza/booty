@@ -114,6 +114,7 @@ export interface Room {
   props: Prop[];
   spawnX: number;
   spawnFloor: number;
+  collectedKeys: Set<number>;
 }
 
 export interface LevelSnapshot {

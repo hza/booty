@@ -32,6 +32,7 @@ function attemptRoom(def: RoomDef): { room: Room; minDepth: number } | null {
     ladders, portals, doors, keys, treasures, pirates, props,
     spawnX: def.spawnX,
     spawnFloor: def.spawnFloor,
+    collectedKeys: new Set(),
   };
   return { room, minDepth: Math.min(...depths) };
 }
@@ -70,14 +71,15 @@ function snapshotRooms(rooms: Room[]): LevelSnapshot {
     currentRoomId: 0,
     rooms: rooms.map(room => ({
       ...room,
-      platforms:  room.platforms.map(p => ({ ...p })),
-      ladders:    room.ladders.map(l => ({ ...l })),
-      doors:      room.doors.map(d => ({ ...d })),
-      keys:       room.keys.map(k => ({ ...k })),
-      portals:    room.portals.map(p => ({ ...p })),
-      pirates:    room.pirates.map(p => ({ ...p })),
-      treasures:  room.treasures.map(t => ({ ...t })),
-      props:      room.props.map(p => ({ ...p })),
+      platforms:    room.platforms.map(p => ({ ...p })),
+      ladders:      room.ladders.map(l => ({ ...l })),
+      doors:        room.doors.map(d => ({ ...d })),
+      keys:         room.keys.map(k => ({ ...k })),
+      portals:      room.portals.map(p => ({ ...p })),
+      pirates:      room.pirates.map(p => ({ ...p })),
+      treasures:    room.treasures.map(t => ({ ...t })),
+      props:        room.props.map(p => ({ ...p })),
+      collectedKeys: new Set<number>(),
     })),
   };
 }
@@ -147,14 +149,15 @@ export function resetLevel(state: GameState, newLevel = false): void {
     state.currentRoomId = snap.currentRoomId;
     state.rooms = snap.rooms.map(room => ({
       ...room,
-      platforms:  room.platforms.map(p => ({ ...p })),
-      ladders:    room.ladders.map(l => ({ ...l })),
-      doors:      room.doors.map(d => ({ ...d })),
-      keys:       room.keys.map(k => ({ ...k })),
-      portals:    room.portals.map(p => ({ ...p })),
-      pirates:    room.pirates.map(p => ({ ...p })),
-      treasures:  room.treasures.map(t => ({ ...t })),
-      props:      room.props.map(p => ({ ...p })),
+      platforms:    room.platforms.map(p => ({ ...p })),
+      ladders:      room.ladders.map(l => ({ ...l })),
+      doors:        room.doors.map(d => ({ ...d })),
+      keys:         room.keys.map(k => ({ ...k })),
+      portals:      room.portals.map(p => ({ ...p })),
+      pirates:      room.pirates.map(p => ({ ...p })),
+      treasures:    room.treasures.map(t => ({ ...t })),
+      props:        room.props.map(p => ({ ...p })),
+      collectedKeys: new Set<number>(),
     }));
   }
 
@@ -215,8 +218,10 @@ export function update(state: GameState, input: InputState): void {
   if (state.pendingRoomSwitch) {
     const { targetRoomId, portalName } = state.pendingRoomSwitch;
     state.pendingRoomSwitch = undefined;
+    state.rooms[state.currentRoomId].collectedKeys = new Set(state.collectedKeys);
     const targetRoom = state.rooms[targetRoomId];
     state.currentRoomId = targetRoomId;
+    state.collectedKeys = new Set(targetRoom.collectedKeys);
     applyRoom(state, targetRoom);
     const dest = targetRoom.portals.find(p => p.name === portalName);
     if (dest) {
