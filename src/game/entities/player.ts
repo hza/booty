@@ -104,7 +104,7 @@ export function updatePlayer(state: GameState, input: InputState): void {
   player.x += player.vx;
   player.x = clampToWalls(player.x, PLAYER_W);
 
-  // Door barrier collision — open with key on touch, otherwise block
+  // Door collision — open with key on touch, otherwise block
   for (const door of state.doors) {
     if (door.open) continue;
     if (player.y + PLAYER_H <= door.y || player.y >= door.y + door.h) continue;

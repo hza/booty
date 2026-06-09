@@ -73,7 +73,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.font = '11px monospace';
   ctx.textAlign = 'right';
   ctx.fillText('← → move   ↑↓ ladder   SPACE jump', CANVAS_W - 20, hudY + 22);
-  ctx.fillText('Keys open barriers · ↓ to enter portal', CANVAS_W - 20, hudY + 42);
+  ctx.fillText('Keys open doors · ↓ to enter portal', CANVAS_W - 20, hudY + 42);
   ctx.fillText('Avoid pirates!', CANVAS_W - 20, hudY + 62);
 }
 

@@ -47,11 +47,11 @@ export interface Key {
   bobTimer: number;
 }
 
-// Thin vertical barrier on a floor — opened by the matching numbered key
+// Thin vertical door on a floor — opened by the matching numbered key
 export interface Door {
   id: number;
   number: number;
-  x: number;    // centre X of the barrier
+  x: number;    // centre X of the door
   y: number;    // top Y (sits on floor surface)
   h: number;    // height (spans upward)
   open: boolean;

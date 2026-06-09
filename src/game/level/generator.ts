@@ -20,8 +20,8 @@ export interface RoomContext {
   floorLadderXs: number[][];
 }
 
-// Ceiling above each floor's barrier.  Lower floors use the floor above (+
-// its thickness); the top floor mirrors the inter-floor gap so every barrier
+// Ceiling above each floor's door.  Lower floors use the floor above (+
+// its thickness); the top floor mirrors the inter-floor gap so every door
 // spans the same height.
 export function computeCeilingYs(floorYs: number[]): number[] {
   return floorYs.map((fy, i) => {

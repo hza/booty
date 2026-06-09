@@ -19,7 +19,7 @@ export const FLOOR_H = 16;
 
 export const PORTAL_W = 36;
 export const PORTAL_H = 56;
-export const DOOR_BAR_W = 8;   // full collision width of a door barrier
+export const DOOR_BAR_W = 8;   // full collision width of a door
 export const DOOR_HALF_W = 4;  // half-width used for floor-segment splitting
 
 export const COLORS = {
