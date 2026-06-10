@@ -74,7 +74,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.shadowBlur = 8;
   ctx.font = 'bold 18px monospace';
   ctx.textAlign = 'right';
-  ctx.fillText(`LEVEL  ${state.levelNumber}`, CANVAS_W - 20, hudY + 22);
+  ctx.fillText(`ROOM  ${state.currentRoomId + 1}`, CANVAS_W - 20, hudY + 22);
   ctx.shadowBlur = 0;
 
   ctx.fillStyle = 'rgba(180,200,255,0.4)';
