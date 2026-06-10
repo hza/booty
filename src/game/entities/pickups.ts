@@ -50,6 +50,7 @@ export function updatePortals(state: GameState, input: InputState): void {
       state.pendingRoomSwitch = { targetRoomId: portal.targetRoomId, portalName: portal.name };
       spawnParticles(state.particles, portal.x + PORTAL_W / 2, portal.y + PORTAL_H / 2, '#44aaff', 14, 4);
       player.portalCooldown = 60;
+      player.invincible = 120;
       break;
     }
   }
