@@ -81,6 +81,10 @@ export function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.font = '11px monospace';
   ctx.fillText('← → move   ↑↓ ladder   SPACE jump', CANVAS_W - 20, hudY + 42);
   ctx.fillText('Keys open doors · ↓ to enter portal', CANVAS_W - 20, hudY + 58);
+
+  ctx.fillStyle = 'rgba(180,200,255,0.25)';
+  ctx.font = '9px monospace';
+  ctx.fillText(`seed: ${state.seed}`, CANVAS_W - 20, hudY + 71);
 }
 
 function drawMiniPlayer(ctx: CanvasRenderingContext2D, x: number, y: number): void {

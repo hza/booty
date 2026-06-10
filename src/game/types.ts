@@ -137,6 +137,7 @@ export interface GameState {
   initialLevel: LevelSnapshot;
   collectedKeys: Set<number>;
   openedDoors: Set<number>;
+  seed: number;
   score: number;
   treasureCount: number;
   lives: number;

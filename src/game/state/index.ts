@@ -52,9 +52,9 @@ function buildSolvableRoom(def: RoomDef, baseSeed: number): Room {
   return best?.room ?? attemptRoom(def, baseSeed)!.room;
 }
 
-function buildRooms(): Room[] {
-  const room0 = buildSolvableRoom(defaultRoomDef(0), LEVEL_SEED);
-  const room1 = buildSolvableRoom(defaultRoomDef(1), LEVEL_SEED + 1000);
+function buildRooms(seed: number): Room[] {
+  const room0 = buildSolvableRoom(defaultRoomDef(0), seed);
+  const room1 = buildSolvableRoom(defaultRoomDef(1), seed + 1000);
 
   // Match portal counts between rooms so letters align, then link by name
   const count = Math.min(room0.portals.length, room1.portals.length);
@@ -99,8 +99,13 @@ function applyRoom(state: GameState, room: Room): void {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+function randomSeed(): number {
+  return LEVEL_SEED ?? Math.trunc(Math.random() * 0xffffff);
+}
+
 export function initState(): GameState {
-  const rooms = buildRooms();
+  const seed = randomSeed();
+  const rooms = buildRooms(seed);
   const currentRoomId = 0;
   const room = rooms[currentRoomId];
   const initialLevel = snapshotRooms(rooms);
@@ -124,6 +129,7 @@ export function initState(): GameState {
     treasures: room.treasures,
     props:     room.props,
     initialLevel,
+    seed,
     collectedKeys: new Set(),
     openedDoors: new Set(),
     score: 0,
@@ -144,7 +150,8 @@ export function initState(): GameState {
 export function resetLevel(state: GameState, newLevel = false): void {
   if (newLevel) {
     state.levelNumber++;
-    const rooms = buildRooms();
+    state.seed = randomSeed();
+    const rooms = buildRooms(state.seed);
     state.rooms        = rooms;
     state.currentRoomId = 0;
     state.initialLevel = snapshotRooms(rooms);
