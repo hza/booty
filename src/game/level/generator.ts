@@ -1,6 +1,20 @@
 import type { Platform, Ladder, Key, Door, Portal, Pirate, Treasure, Prop, PropKind, Room } from '../types';
 import { FLOOR_Y, FLOOR_H, CANVAS_W, CANVAS_H, TILE, PORTAL_W, PORTAL_H } from '../constants';
 
+// ─── Seeded PRNG (mulberry32) ─────────────────────────────────────────────────
+
+export type Rng = () => number;
+
+export function makeRng(seed: number): Rng {
+  let s = seed >>> 0;
+  return () => {
+    s += 0x6d2b79f5;
+    let t = Math.imul(s ^ (s >>> 15), s | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 0x100000000;
+  };
+}
+
 // ─── Room definition & context ────────────────────────────────────────────────
 
 export interface RoomDef {
@@ -68,14 +82,14 @@ const KEY_PORTAL_R       = 78;
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
-function pickRandom<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
+function pickRandom<T>(arr: T[], rng: Rng): T {
+  return arr[Math.floor(rng() * arr.length)];
 }
 
-function shuffle<T>(arr: T[]): T[] {
+function shuffle<T>(arr: T[], rng: Rng): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -158,8 +172,8 @@ function ladderColumns(canvasW: number): number[] {
   return cols;
 }
 
-function pickLadderColumns(canvasW: number, count: number, excludeCols: number[] = []): number[] {
-  const available = shuffle(ladderColumns(canvasW).filter(c => !excludeCols.includes(c)));
+function pickLadderColumns(canvasW: number, count: number, rng: Rng, excludeCols: number[] = []): number[] {
+  const available = shuffle(ladderColumns(canvasW).filter(c => !excludeCols.includes(c)), rng);
   const picked: number[] = [];
   for (const c of available) {
     if (picked.length >= count) break;
@@ -168,14 +182,14 @@ function pickLadderColumns(canvasW: number, count: number, excludeCols: number[]
   return picked.sort((a, b) => a - b);
 }
 
-export function buildLadders(def: RoomDef): { ladders: Ladder[]; ctx: RoomContext } {
+export function buildLadders(def: RoomDef, rng: Rng): { ladders: Ladder[]; ctx: RoomContext } {
   const { floorYs, canvasW } = def;
   const ceilingYs = computeCeilingYs(floorYs);
 
   // 2–3 ladders per span; each span avoids the columns of adjacent spans
-  const xs01 = pickLadderColumns(canvasW, 2 + Math.floor(Math.random() * 2));
-  const xs12 = pickLadderColumns(canvasW, 2 + Math.floor(Math.random() * 2), xs01);
-  const xs23 = pickLadderColumns(canvasW, 2 + Math.floor(Math.random() * 2), xs12);
+  const xs01 = pickLadderColumns(canvasW, 2 + Math.floor(rng() * 2), rng);
+  const xs12 = pickLadderColumns(canvasW, 2 + Math.floor(rng() * 2), rng, xs01);
+  const xs23 = pickLadderColumns(canvasW, 2 + Math.floor(rng() * 2), rng, xs12);
 
   const floorLadderXs: number[][] = [
     xs01,
@@ -197,11 +211,11 @@ export function buildLadders(def: RoomDef): { ladders: Ladder[]; ctx: RoomContex
 
 // ─── Randomised level elements ────────────────────────────────────────────────
 
-export function buildPortals(ctx: RoomContext): Portal[] {
+export function buildPortals(ctx: RoomContext, rng: Rng): Portal[] {
   const { def } = ctx;
   const { floorYs } = def;
-  const count = Math.floor(Math.random() * 3) + 1;
-  const floors = shuffle([...Array(floorYs.length).keys()]).slice(0, count);
+  const count = Math.floor(rng() * 3) + 1;
+  const floors = shuffle([...Array(floorYs.length).keys()], rng).slice(0, count);
   const portals: Portal[] = [];
 
   for (let i = 0; i < floors.length; i++) {
@@ -212,7 +226,7 @@ export function buildPortals(ctx: RoomContext): Portal[] {
     portals.push({
       id: i,
       name: String.fromCharCode(65 + i),
-      x: pickRandom(candidates),
+      x: pickRandom(candidates, rng),
       y: floorYs[fi] - PORTAL_H,
       kind: 'level-exit',
     });
@@ -225,7 +239,7 @@ export function buildPortals(ctx: RoomContext): Portal[] {
   return portals;
 }
 
-export function buildDoors(portals: Portal[], ctx: RoomContext): Door[] {
+export function buildDoors(portals: Portal[], ctx: RoomContext, rng: Rng): Door[] {
   const { def, ceilingYs } = ctx;
   const { floorYs } = def;
 
@@ -241,13 +255,13 @@ export function buildDoors(portals: Portal[], ctx: RoomContext): Door[] {
   let doorNum = 1;
 
   for (let fi = 0; fi < floorYs.length && doors.length < 8; fi++) {
-    const want = Math.random() < 0.1 ? 1 : 2;
+    const want = rng() < 0.1 ? 1 : 2;
     const takenXs: number[] = [];
 
     for (let i = 0; i < want && doors.length < 8; i++) {
       const candidates = validDoorXs(fi, takenXs, portalXsByFloor[fi], ctx);
       if (candidates.length === 0) break;
-      const x = pickRandom(candidates);
+      const x = pickRandom(candidates, rng);
       takenXs.push(x);
       doors.push({
         id: doorId++,
@@ -263,7 +277,7 @@ export function buildDoors(portals: Portal[], ctx: RoomContext): Door[] {
   return doors;
 }
 
-export function buildKeys(doors: Door[], portals: Portal[], ctx: RoomContext): Key[] {
+export function buildKeys(doors: Door[], portals: Portal[], ctx: RoomContext, rng: Rng): Key[] {
   const { def } = ctx;
   const { floorYs } = def;
 
@@ -285,14 +299,14 @@ export function buildKeys(doors: Door[], portals: Portal[], ctx: RoomContext): K
 
   for (const door of doors) {
     const df = doorFloor(door, ctx.ceilingYs);
-    const floorOrder = shuffle([...Array(floorYs.length).keys()].filter(f => f !== df));
+    const floorOrder = shuffle([...Array(floorYs.length).keys()].filter(f => f !== df), rng);
     floorOrder.push(df);
 
     let placed = false;
     for (const fi of floorOrder) {
       const candidates = validKeyXs(fi, doorXsByFloor[fi], portalXsByFloor[fi], keyXsByFloor[fi], ctx);
       if (candidates.length === 0) continue;
-      const x = pickRandom(candidates);
+      const x = pickRandom(candidates, rng);
       keyXsByFloor[fi].push(x);
       keys.push({
         id: door.id,
@@ -300,7 +314,7 @@ export function buildKeys(doors: Door[], portals: Portal[], ctx: RoomContext): K
         x,
         y: floorYs[fi] - 26,
         collected: false,
-        bobTimer: Math.floor(Math.random() * 30),
+        bobTimer: Math.floor(rng() * 30),
       });
       placed = true;
       break;
@@ -385,7 +399,7 @@ const PROP_LADDER_CLEAR = 32;
 const PROP_DOOR_CLEAR   = 30;
 const PROP_SEP          = 40;
 
-export function buildProps(doors: Door[], portals: Portal[], ctx: RoomContext): Prop[] {
+export function buildProps(doors: Door[], portals: Portal[], ctx: RoomContext, rng: Rng): Prop[] {
   const { def } = ctx;
   const { floorYs } = def;
   const ceilingYs = ctx.ceilingYs;
@@ -422,19 +436,19 @@ export function buildProps(doors: Door[], portals: Portal[], ctx: RoomContext): 
       }
     }
 
-    const want = 2 + Math.floor(Math.random() * 3);
+    const want = 2 + Math.floor(rng() * 3);
     const takenXs: number[] = [];
-    const pool = shuffle(candidates);
+    const pool = shuffle(candidates, rng);
     for (const x of pool) {
       if (takenXs.length >= want) break;
       if (takenXs.every(tx => Math.abs(x - tx) >= PROP_SEP)) {
         takenXs.push(x);
         props.push({
           id: id++,
-          kind: pickRandom(PROP_KINDS),
+          kind: pickRandom(PROP_KINDS, rng),
           x,
           y: floorYs[fi],
-          flip: Math.random() < 0.5,
+          flip: rng() < 0.5,
         });
       }
     }
@@ -443,7 +457,7 @@ export function buildProps(doors: Door[], portals: Portal[], ctx: RoomContext): 
   return props;
 }
 
-export function buildTreasures(doors: Door[], ctx: RoomContext): Treasure[] {
+export function buildTreasures(doors: Door[], ctx: RoomContext, rng: Rng): Treasure[] {
   const { def, ceilingYs } = ctx;
   const { floorYs } = def;
 
@@ -458,7 +472,7 @@ export function buildTreasures(doors: Door[], ctx: RoomContext): Treasure[] {
   const TREASURE_SEP = 80;
 
   const treasures: Treasure[] = [];
-  const floorPool = shuffle([0, 1, 2, 2, 3, 3]);
+  const floorPool = shuffle([0, 1, 2, 2, 3, 3], rng);
   const usedFloors: number[] = [];
   for (const f of floorPool) {
     if (!usedFloors.includes(f) && usedFloors.length < 2) usedFloors.push(f);
@@ -482,7 +496,7 @@ export function buildTreasures(doors: Door[], ctx: RoomContext): Treasure[] {
 
     let x: number;
     if (candidates.length > 0) {
-      x = pickRandom(candidates);
+      x = pickRandom(candidates, rng);
     } else {
       x = 200 + i * 300;
     }
@@ -495,15 +509,15 @@ export function buildTreasures(doors: Door[], ctx: RoomContext): Treasure[] {
 
 // ─── Room assembly ────────────────────────────────────────────────────────────
 
-export function buildRoom(def: RoomDef): Room {
+export function buildRoom(def: RoomDef, rng: Rng): Room {
   const platforms = buildPlatforms(def);
-  const { ladders, ctx } = buildLadders(def);
-  const portals = buildPortals(ctx);
-  const doors = buildDoors(portals, ctx);
-  const keys = buildKeys(doors, portals, ctx);
-  const treasures = buildTreasures(doors, ctx);
+  const { ladders, ctx } = buildLadders(def, rng);
+  const portals = buildPortals(ctx, rng);
+  const doors = buildDoors(portals, ctx, rng);
+  const keys = buildKeys(doors, portals, ctx, rng);
+  const treasures = buildTreasures(doors, ctx, rng);
   const pirates = buildPirates(doors, def);
-  const props = buildProps(doors, portals, ctx);
+  const props = buildProps(doors, portals, ctx, rng);
   return {
     id: def.id,
     floorYs: def.floorYs,

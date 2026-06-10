@@ -12,8 +12,9 @@ export {
   buildProps,
   buildTreasures,
   buildRoom,
+  makeRng,
 } from './generator';
 
-export type { RoomDef, RoomContext } from './generator';
+export type { RoomDef, RoomContext, Rng } from './generator';
 
 export { checkSolvable, minDoorsToTreasure } from './solvability';

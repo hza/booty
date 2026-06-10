@@ -1,9 +1,10 @@
 import type { GameState, Room, LevelSnapshot, InputState } from '../types';
-import { PLAYER_H, PLAYER_W, PORTAL_W, PORTAL_H } from '../constants';
+import { PLAYER_H, PLAYER_W, PORTAL_W, PORTAL_H, LEVEL_SEED } from '../constants';
 import {
   defaultRoomDef,
   buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals,
   buildPirates, buildTreasures, buildProps, checkSolvable, minDoorsToTreasure,
+  makeRng,
 } from '../level';
 import type { RoomDef } from '../level';
 import { updatePlayer } from '../entities/player';
@@ -12,19 +13,20 @@ import { updateKeys, updatePortals, updateTreasures, updateParticles } from '../
 
 // ─── Level assembly ───────────────────────────────────────────────────────────
 
-function attemptRoom(def: RoomDef): { room: Room; minDepth: number } | null {
-  const { ladders, ctx } = buildLadders(def);
-  const portals   = buildPortals(ctx);
-  const doors     = buildDoors(portals, ctx);
-  const keys      = buildKeys(doors, portals, ctx);
-  const treasures = buildTreasures(doors, ctx);
+function attemptRoom(def: RoomDef, seed: number): { room: Room; minDepth: number } | null {
+  const rng = makeRng(seed);
+  const { ladders, ctx } = buildLadders(def, rng);
+  const portals   = buildPortals(ctx, rng);
+  const doors     = buildDoors(portals, ctx, rng);
+  const keys      = buildKeys(doors, portals, ctx, rng);
+  const treasures = buildTreasures(doors, ctx, rng);
   const spawn     = { floorIndex: def.spawnFloor, x: def.spawnX };
 
   if (!checkSolvable(doors, keys, ladders, treasures, def.floorYs, spawn)) return null;
 
   const depths = treasures.map(t => minDoorsToTreasure(t, doors, keys, ladders, def.floorYs, spawn));
   const pirates = buildPirates(doors, def);
-  const props   = buildProps(doors, portals, ctx);
+  const props   = buildProps(doors, portals, ctx, rng);
   const room: Room = {
     id: def.id,
     floorYs: def.floorYs,
@@ -37,22 +39,22 @@ function attemptRoom(def: RoomDef): { room: Room; minDepth: number } | null {
   return { room, minDepth: Math.min(...depths) };
 }
 
-function buildSolvableRoom(def: RoomDef): Room {
+function buildSolvableRoom(def: RoomDef, baseSeed: number): Room {
   let best: { room: Room; minDepth: number } | null = null;
 
   for (let attempt = 0; attempt < 50; attempt++) {
-    const result = attemptRoom(def);
+    const result = attemptRoom(def, baseSeed + attempt);
     if (!result) continue;
     if (result.minDepth >= 3) return result.room;
     if (!best || result.minDepth > best.minDepth) best = result;
   }
 
-  return best?.room ?? attemptRoom(def)!.room;
+  return best?.room ?? attemptRoom(def, baseSeed)!.room;
 }
 
 function buildRooms(): Room[] {
-  const room0 = buildSolvableRoom(defaultRoomDef(0));
-  const room1 = buildSolvableRoom(defaultRoomDef(1));
+  const room0 = buildSolvableRoom(defaultRoomDef(0), LEVEL_SEED);
+  const room1 = buildSolvableRoom(defaultRoomDef(1), LEVEL_SEED + 1000);
 
   // Match portal counts between rooms so letters align, then link by name
   const count = Math.min(room0.portals.length, room1.portals.length);
