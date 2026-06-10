@@ -23,6 +23,7 @@ export const DOOR_BAR_W = 8;   // full collision width of a door
 export const DOOR_HALF_W = 4;  // half-width used for floor-segment splitting
 
 export const LEVEL_SEED: number | null = null; // set to a number to fix the seed for testing
+export const NUM_ROOMS = 3;
 
 export const COLORS = {
   sky: '#0a2a6e',

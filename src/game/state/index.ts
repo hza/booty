@@ -1,5 +1,5 @@
 import type { GameState, Room, LevelSnapshot, InputState } from '../types';
-import { PLAYER_H, PLAYER_W, PORTAL_W, PORTAL_H, LEVEL_SEED } from '../constants';
+import { PLAYER_H, PLAYER_W, PORTAL_W, PORTAL_H, LEVEL_SEED, NUM_ROOMS } from '../constants';
 import {
   defaultRoomDef,
   buildPlatforms, buildLadders, buildKeys, buildDoors, buildPortals,
@@ -53,19 +53,20 @@ function buildSolvableRoom(def: RoomDef, baseSeed: number): Room {
 }
 
 function buildRooms(seed: number): Room[] {
-  const room0 = buildSolvableRoom(defaultRoomDef(0), seed);
-  const room1 = buildSolvableRoom(defaultRoomDef(1), seed + 1000);
+  const rooms = Array.from({ length: NUM_ROOMS }, (_, i) =>
+    buildSolvableRoom(defaultRoomDef(i), seed + i * 1000)
+  );
 
   // Match portal counts between rooms so letters align, then link by name
-  const count = Math.min(room0.portals.length, room1.portals.length);
-  room0.portals = room0.portals.slice(0, count).map((p, i) => ({
-    ...p, name: String.fromCharCode(65 + i), kind: 'room-link' as const, targetRoomId: 1,
-  }));
-  room1.portals = room1.portals.slice(0, count).map((p, i) => ({
-    ...p, name: String.fromCharCode(65 + i), kind: 'room-link' as const, targetRoomId: 0,
-  }));
+  const count = Math.min(...rooms.map(r => r.portals.length));
+  rooms.forEach((room, i) => {
+    const next = (i + 1) % NUM_ROOMS;
+    room.portals = room.portals.slice(0, count).map((p, j) => ({
+      ...p, name: String.fromCharCode(65 + j), kind: 'room-link' as const, targetRoomId: next,
+    }));
+  });
 
-  return [room0, room1];
+  return rooms;
 }
 
 function snapshotRooms(rooms: Room[]): LevelSnapshot {
