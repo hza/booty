@@ -13,6 +13,14 @@ import { updateKeys, updatePortals, updateTreasures, updateParticles } from '../
 
 // ─── Level assembly ───────────────────────────────────────────────────────────
 
+function portalSpawns(portals: { x: number; y: number }[], floorYs: number[]): Array<{ floorIndex: number; x: number }> {
+  return portals.flatMap(p => {
+    const fi = floorYs.findIndex(fy => p.y === fy - PORTAL_H);
+    if (fi < 0) return [];
+    return [{ floorIndex: fi, x: p.x + (PORTAL_W - PLAYER_W) / 2 }];
+  });
+}
+
 function attemptRoom(def: RoomDef, seed: number): { room: Room; minDepth: number } | null {
   const rng = makeRng(seed);
   const { ladders, ctx } = buildLadders(def, rng);
@@ -22,9 +30,14 @@ function attemptRoom(def: RoomDef, seed: number): { room: Room; minDepth: number
   const treasures = buildTreasures(doors, ctx, rng);
   const spawn     = { floorIndex: def.spawnFloor, x: def.spawnX };
 
-  if (!checkSolvable(doors, keys, ladders, treasures, def.floorYs, spawn)) return null;
+  // For non-first rooms the player enters via a portal, so verify solvability
+  // from every portal entry point instead of the fixed spawn position.
+  const spawns = def.id === 0 ? [spawn] : portalSpawns(portals, def.floorYs);
+  if (spawns.length === 0 || spawns.some(s => !checkSolvable(doors, keys, ladders, treasures, def.floorYs, s))) return null;
 
-  const depths = treasures.map(t => minDoorsToTreasure(t, doors, keys, ladders, def.floorYs, spawn));
+  const depths = treasures.map(t =>
+    Math.min(...spawns.map(s => minDoorsToTreasure(t, doors, keys, ladders, def.floorYs, s)))
+  );
   const pirates = buildPirates(doors, def);
   const props   = buildProps(doors, portals, ctx, rng);
   const room: Room = {
